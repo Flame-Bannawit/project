@@ -1,65 +1,81 @@
-import Image from "next/image";
+// app/page.tsx
+import Link from "next/link";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <div className="space-y-6">
+      {/* Hero */}
+      <section className="space-y-3">
+        <p className="inline-flex items-center gap-2 text-[11px] px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-400/40 text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+          HealthyMate · AI Food Logging Prototype
+        </p>
+
+        <h1 className="text-2xl sm:text-3xl font-semibold leading-snug">
+          บันทึกมื้ออาหารด้วย{" "}
+          <span className="text-emerald-400">AI</span> แล้วให้ระบบช่วย
+          คำนวณสารอาหาร &amp; TDEE ให้คุณ
+        </h1>
+
+        <p className="text-xs sm:text-sm text-gray-300 max-w-xl">
+          ถ่ายรูปอาหารของคุณ แล้วให้ HealthyMate วิเคราะห์เมนู แคลอรี่
+          และเก็บเป็นประวัติ เพื่อใช้สรุปเป็น Dashboard สุขภาพในอนาคต
+        </p>
+
+        <div className="flex flex-wrap gap-2 mt-2">
+          <Link
+            href="/analyze"
+            className="px-4 py-2 rounded-full bg-emerald-500 text-black text-sm font-medium hover:bg-emerald-400"
+          >
+            เริ่มวิเคราะห์มื้ออาหาร
+          </Link>
+          <Link
+            href="/register"
+            className="px-4 py-2 rounded-full border border-white/15 text-xs text-gray-200 hover:bg-white/10"
+          >
+            สมัครสมาชิก HealthyMate
+          </Link>
+        </div>
+      </section>
+
+      {/* Quick actions */}
+      <section className="grid sm:grid-cols-3 gap-3 text-xs sm:text-sm">
+        <Link
+          href="/analyze"
+          className="rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 hover:border-emerald-400/60 hover:bg-emerald-500/5 transition"
+        >
+          <div className="text-[11px] text-emerald-300 mb-1">STEP 1</div>
+          <div className="font-semibold mb-1">ถ่ายรูปมื้ออาหาร</div>
+          <p className="text-[11px] text-gray-300">
+            อัปโหลดภาพอาหารจากกล้องหรือแกลเลอรีให้ AI วิเคราะห์เมนู
+            และประเมินแคลอรี่
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
+        </Link>
+
+        <Link
+          href="/history"
+          className="rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 hover:border-sky-400/60 hover:bg-sky-500/5 transition"
+        >
+          <div className="text-[11px] text-sky-300 mb-1">STEP 2</div>
+          <div className="font-semibold mb-1">ดูประวัติมื้ออาหาร</div>
+          <p className="text-[11px] text-gray-300">
+            ระบบบันทึกมื้ออาหารของคุณ
+            เพื่อใช้ดูย้อนหลังและสรุปเป็นสถิติรายวัน/รายสัปดาห์
+          </p>
+        </Link>
+
+        <Link
+          href="/profile"
+          className="rounded-2xl border border-white/10 bg-black/40 p-3 sm:p-4 hover:border-violet-400/60 hover:bg-violet-500/5 transition"
+        >
+          <div className="text-[11px] text-violet-300 mb-1">STEP 3</div>
+          <div className="font-semibold mb-1">ตั้งค่าข้อมูลร่างกาย</div>
+          <p className="text-[11px] text-gray-300">
+            กรอกเพศ อายุ น้ำหนัก ส่วนสูง เพื่อให้ระบบคำนวณ BMI, BMR และ TDEE
+            ได้แม่นยำขึ้น
+          </p>
+        </Link>
+      </section>
     </div>
   );
 }
