@@ -197,6 +197,7 @@ export default function RegisterPage() {
             เข้าสู่ระบบ
           </Link>
         </p>
+
       </div>
     </div>
   );
