@@ -5,17 +5,24 @@ const MealLogSchema = new mongoose.Schema(
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: false, // ถ้าตอนนี้ยังไม่ได้ผูก user ทุกเคส ค่อยให้ required ทีหลังได้
+      required: false,
     },
-
     imageUrl: { type: String, required: true },
+    
+    // ข้อมูลชื่ออาหารสำหรับแสดงผลหน้าประวัติ
+    foodName: String, 
+    thaiName: String,
 
-    // ผลจาก AI เดิม
+    // ข้อมูลสารอาหาร (หลังคำนวณ Portion)
+    calories: Number,      // ใช้ฟิลด์นี้เป็นหลัก
+    totalCalories: Number, // เพิ่มตัวนี้เข้าไปเพื่อให้ตรงกับหน้า History
+    protein: Number,
+    fat: Number,
+    carbs: Number,
+    portion: Number,
+
+    // ผลจาก AI และ Mapping
     aiLabel: String,
-    aiProb: Number,
-    raw: Object,
-
-    // ผล mapping เมนูไทยดิบ ๆ เก็บไว้ทั้งก้อน
     thaiDish: {
       id: String,
       thaiName: String,
@@ -23,21 +30,10 @@ const MealLogSchema = new mongoose.Schema(
       protein: Number,
       fat: Number,
       carbs: Number,
-      matchedName: String,
-      matchedKeyword: String,
-      confidence: Number,
+      healthNote: String, // เพิ่มเพื่อให้เก็บ Note จาก AI ได้
     },
 
-    // ส่วนที่เกี่ยวกับการกินจริง (หลัง user ยืนยัน)
-    thaiDishId: String,     // ซ้ำกับ thaiDish.id แต่เก็บไว้แยกสำหรับ query
-    thaiName: String,       // ซ้ำ thaiDish.thaiName
-    portion: Number,        // กี่จาน เช่น 0.5 / 1 / 1.5 / 2
-
-    calories: Number,       // kcal หลังคูณ portion แล้ว
-    protein: Number,        // g
-    fat: Number,            // g
-    carbs: Number,          // g
-
+    thaiDishId: String,
     loggedAt: { type: Date, default: Date.now },
   },
   { timestamps: true }

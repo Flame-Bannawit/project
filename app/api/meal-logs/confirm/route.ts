@@ -2,73 +2,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongoose";
 import { MealLog } from "@/models/MealLog";
-// import getCurrentUser from "@/lib/auth"; // ถ้าอยากผูก user ด้วย
+import getCurrentUser from "@/lib/auth";
 
 export async function POST(req: NextRequest) {
   try {
     const { logId, portion } = await req.json();
-
-    if (!logId || !portion) {
-      return NextResponse.json(
-        { error: "logId and portion are required" },
-        { status: 400 }
-      );
-    }
+    const authUser = await getCurrentUser();
+    
+    if (!authUser) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     await connectDB();
-
     const log = await MealLog.findById(logId);
-    if (!log) {
-      return NextResponse.json(
-        { error: "MealLog not found" },
-        { status: 404 }
-      );
-    }
-
-    if (!log.thaiDish) {
-      return NextResponse.json(
-        { error: "No thaiDish info in this MealLog" },
-        { status: 400 }
-      );
-    }
+    if (!log || !log.thaiDish) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const base = log.thaiDish;
-
-    const calories = base.baseCalories * portion;
-    const protein = base.protein * portion;
-    const fat = base.fat * portion;
-    const carbs = base.carbs * portion;
+    const cal = base.baseCalories * portion;
 
     log.portion = portion;
-    log.calories = calories;
-    log.protein = protein;
-    log.fat = fat;
-    log.carbs = carbs;
-
-    log.thaiDishId = base.id;
+    log.calories = cal;
+    log.totalCalories = cal; 
+    log.protein = base.protein * portion;
+    log.fat = base.fat * portion;
+    log.carbs = base.carbs * portion;
+    log.foodName = base.thaiName;
     log.thaiName = base.thaiName;
-
-    // TODO: ถ้าอยากผูก user:
-    // const user = await getCurrentUser();
-    // if (user) log.userId = user._id;
+    log.userId = authUser._id;
+    
+    // ✅ บันทึกเวลา ณ ตอนที่กดยืนยันกินจริง
+    log.loggedAt = new Date(); 
 
     await log.save();
 
-    return NextResponse.json({
-      ok: true,
-      logId: log._id.toString(),
-      thaiName: log.thaiName,
-      portion: log.portion,
-      calories: log.calories,
-      protein: log.protein,
-      fat: log.fat,
-      carbs: log.carbs,
-    });
-  } catch (err) {
-    console.error("confirm-meal ERROR:", err);
-    return NextResponse.json(
-      { error: "Failed to confirm meal" },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: true, calories: cal });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
