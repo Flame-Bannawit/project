@@ -1,15 +1,39 @@
-/* Tailwind v4: import ตัวเดียวจบ */
 @import "tailwindcss";
 
-/* CSS ปกติของเรา เพิ่มได้เลย ไม่ใช้ @apply */
+/* 1. ย้ายมาไว้นอก @theme (Tailwind v4 syntax) */
+@custom-variant dark (&:where(.dark, .dark *));
 
-body {
-  /* พื้นหลัง gradient ดำ ๆ */
-  background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
-  color: #ffffff;
+/* 2. บล็อก @theme ใช้สำหรับประกาศตัวแปรให้ Tailwind รู้จักเท่านั้น */
+@theme {
+  --color-app-bg: var(--background);
+  --color-app-text: var(--foreground);
 }
 
-/* แต่ง scrollbar นิดหน่อย */
+/* 3. กำหนดค่าตัวแปร CSS พื้นฐาน */
+:root {
+  --background: #f8f9fa;
+  --foreground: #0f172a;
+}
+
+.dark {
+  --background: #050505;
+  --foreground: #ffffff;
+}
+
+/* 4. สไตล์พื้นฐานของ Body */
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  transition: background-color 0.3s, color 0.3s;
+  min-height: 100vh;
+}
+
+/* 5. เอฟเฟกต์เฉพาะ Dark Mode (ถ้าต้องการ) */
+.dark body {
+  background: radial-gradient(circle at top, #1f2937 0, #020617 55%);
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }

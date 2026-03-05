@@ -1,7 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Trash2, Calendar, Flame, Beef, Wheat, Droplets, AlertCircle, Loader2, ChevronDown, ChevronUp } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { 
+  Trash2, Calendar, Flame, Beef, Wheat, Droplets, 
+  AlertCircle, Loader2, Edit2, X, Save, RotateCcw, 
+  RefreshCw, Zap, TrendingUp 
+} from "lucide-react";
+import { getDictionary } from "@/lib/get-dictionary";
 
 type MealLog = {
   _id: string;
@@ -14,104 +19,113 @@ type MealLog = {
   protein?: number;
   carbs?: number;
   fat?: number;
+  remainingPercent?: number;
+  thaiDish?: {
+    originalCalories?: number;
+    originalProtein?: number;
+    originalCarbs?: number;
+    originalFat?: number;
+  }
 };
 
 function MacroRing({ label, current, goal, colorClass, icon: Icon }: { label: string; current: number; goal: number; colorClass: string; icon: any }) {
   const safeGoal = goal > 0 ? goal : 1;
   const percentage = Math.min((current / safeGoal) * 100, 100);
   return (
-    <div className="flex items-center justify-between bg-white/5 border border-white/10 rounded-3xl p-4 w-full">
+    <div className="flex items-center justify-between bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-[1.8rem] p-4 w-full shadow-sm">
       <div className="flex items-center gap-4">
-        <div className="relative h-14 w-14">
+        <div className="relative h-12 w-12">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-            <circle cx="18" cy="18" r="16" fill="none" className="stroke-white/5" strokeWidth="3" />
+            <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100 dark:stroke-white/5" strokeWidth="3" />
             <circle cx="18" cy="18" r="16" fill="none" className={`${colorClass} transition-all duration-1000 ease-out`} strokeWidth="3.5" strokeDasharray={`${percentage}, 100`} strokeLinecap="round" />
           </svg>
           <div className="absolute inset-0 flex items-center justify-center">
-            <Icon size={16} className={`${colorClass.replace('stroke-', 'text-')} opacity-80`} />
+            <Icon size={14} className={`${colorClass.replace('stroke-', 'text-')} opacity-80`} />
           </div>
         </div>
         <div>
-          <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-          <p className="text-sm font-black text-white leading-none">
-            {Math.round(current)} <span className="text-[10px] text-gray-500 font-bold uppercase">/ {Math.round(goal)}g</span>
+          <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest leading-none mb-1">{label}</p>
+          <p className="text-[11px] font-black text-slate-900 dark:text-white leading-none">
+            {Math.round(current)} <span className="text-[9px] text-gray-400 font-bold uppercase">/ {Math.round(goal)}g</span>
           </p>
         </div>
       </div>
-      <div className="text-right px-2">
-        <span className={`text-xs font-black ${percentage >= 100 ? 'text-emerald-500' : 'text-gray-500'}`}>{Math.round(percentage)}%</span>
-      </div>
+      <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${percentage >= 100 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-slate-100 dark:bg-white/5 text-gray-400'}`}>{Math.round(percentage)}%</span>
     </div>
   );
 }
 
 export default function HistoryPage() {
+  const [dict, setDict] = useState<any>(null);
+  const [lang, setLang] = useState<'en' | 'th'>('th');
   const [logs, setLogs] = useState<MealLog[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // ✅ เริ่มต้นที่ค่าว่าง เพื่อรอรับค่าจริงจากบัญชีที่ Logged in อยู่
-  const [goals, setGoals] = useState({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0
-  });
-  
+  const [goals, setGoals] = useState({ calories: 2000, protein: 150, carbs: 250, fat: 70 });
   const [showAll, setShowAll] = useState(false);
   const [filterDate, setFilterDate] = useState("");
+  const [editingLog, setEditingLog] = useState<MealLog | null>(null);
+  const [remainingPercent, setRemainingPercent] = useState(0);
+  const [isUpdating, setIsUpdating] = useState(false);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
+    setLoading(true);
     try {
-      // 1. ดึงเป้าหมายจาก Profile ของ User คนปัจจุบัน
-      const profileRes = await fetch("/api/profile");
+      const savedLang = (localStorage.getItem("preferred-lang") as 'en' | 'th') || 'th';
+      setLang(savedLang);
+      const dictionary = await getDictionary(savedLang);
+      setDict(dictionary);
+
+      const [profileRes, logsRes] = await Promise.all([
+        fetch("/api/profile"),
+        fetch("/api/meal-logs")
+      ]);
+
       if (profileRes.ok) {
-        const data = await profileRes.json();
-        const profile = data.profile || data; // รองรับโครงสร้าง API หลายแบบ
-        
-        // ดึงค่าเป้าหมายจาก Database ตรงๆ เหมือนหน้า Home
-        const g = profile.goals || profile; 
+        const profileData = await profileRes.json();
+        const userProfile = profileData.profile || profileData;
         
         setGoals({
-          calories: Number(g.calories || g.dailyCalorieGoal) || 2000,
-          protein: Number(g.protein || g.proteinGoal) || 150,
-          carbs: Number(g.carbs || g.carbsGoal) || 250,
-          fat: Number(g.fat || g.fatGoal) || 70,
+          calories: Number(userProfile?.dailyCalorieGoal || userProfile?.goals?.calories || 2000),
+          protein: Number(userProfile?.goals?.protein || userProfile?.proteinGoal || 150),
+          carbs: Number(userProfile?.goals?.carbs || userProfile?.carbsGoal || 250),
+          fat: Number(userProfile?.goals?.fat || userProfile?.fatGoal || 70),
         });
       }
 
-      // 2. ดึงประวัติการกิน
-      const res = await fetch("/api/meal-logs");
-      if (res.ok) {
-        const data = await res.json();
+      if (logsRes.ok) {
+        const data = await logsRes.json();
         const logsData = Array.isArray(data) ? data : data.logs || [];
-        setLogs(logsData.sort((a: any, b: any) => new Date(b.loggedAt || b.createdAt).getTime() - new Date(a.loggedAt || a.createdAt).getTime()));
-      }
-    } catch (err) { 
-      console.error("Load Error:", err); 
-    } finally { 
-      setLoading(false); 
-    }
-  };
+        
+        const normalizedLogs = logsData.map((log: any) => ({
+          ...log,
+          calories: Number(log.calories ?? log.totalCalories ?? 0),
+          protein: Number(log.protein ?? 0),
+          carbs: Number(log.carbs ?? 0),
+          fat: Number(log.fat ?? 0)
+        }));
 
-  useEffect(() => { loadData(); }, []);
+        setLogs(normalizedLogs.sort((a: any, b: any) => 
+          new Date(b.loggedAt || b.createdAt).getTime() - new Date(a.loggedAt || a.createdAt).getTime()
+        ));
+      }
+    } catch (err) { console.error("Load Error:", err); } finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
 
   const getCustomDateStr = (dateInput?: string) => {
     const date = dateInput ? new Date(dateInput) : new Date();
-    if (date.getHours() < 3) date.setDate(date.getDate() - 1);
     return date.toISOString().slice(0, 10);
   };
 
   const todayStr = getCustomDateStr();
-  
-  const filteredLogs = filterDate 
-    ? logs.filter(log => (log.loggedAt || log.createdAt || "").startsWith(filterDate))
-    : logs;
-
+  const filteredLogs = filterDate ? logs.filter(log => (log.loggedAt || log.createdAt || "").startsWith(filterDate)) : logs;
   const todaysLogs = logs.filter(log => getCustomDateStr(log.loggedAt || log.createdAt) === todayStr);
   const pastLogs = logs.filter(log => getCustomDateStr(log.loggedAt || log.createdAt) !== todayStr);
 
   const stats = todaysLogs.reduce((acc, log) => ({
-    cal: acc.cal + (log.totalCalories || log.calories || 0), 
+    cal: acc.cal + (log.calories || 0), 
     pro: acc.pro + (log.protein || 0),
     carb: acc.carb + (log.carbs || 0),
     fat: acc.fat + (log.fat || 0),
@@ -120,136 +134,233 @@ export default function HistoryPage() {
   const calPercentage = Math.min((stats.cal / (goals.calories || 1)) * 100, 100);
 
   const handleDelete = async (id: string) => {
-    if (!confirm("ลบรายการนี้ใช่หรือไม่?")) return;
+    if (!confirm(lang === 'th' ? "ลบรายการนี้ใช่หรือไม่?" : "Delete this item?")) return;
     const res = await fetch(`/api/meal-logs/${id}`, { method: "DELETE" });
     if (res.ok) setLogs(prev => prev.filter(l => l._id !== id));
   };
 
-  if (loading) return (
-    <div className="flex flex-col justify-center items-center h-screen bg-black">
-      <Loader2 className="animate-spin text-emerald-500 mb-4" size={32} />
-      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Syncing Data...</span>
+  const openEditModal = (log: MealLog) => {
+    setEditingLog(log);
+    setRemainingPercent(log.remainingPercent || 0);
+  };
+
+  const handleUpdatePercent = async () => {
+    if (!editingLog) return;
+    setIsUpdating(true);
+    try {
+      const res = await fetch(`/api/meal-logs/${editingLog._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ remainingPercent: Number(remainingPercent) })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const updated = data.updatedLog || data;
+        setLogs(prev => prev.map(l => l._id === updated._id ? { 
+          ...l, 
+          ...updated, 
+          calories: updated.calories ?? updated.totalCalories ?? 0,
+          protein: updated.protein ?? 0,
+          carbs: updated.carbs ?? 0,
+          fat: updated.fat ?? 0
+        } : l));
+        setEditingLog(null);
+      } else {
+        const errData = await res.json();
+        alert(`Error: ${errData.error}`);
+      }
+    } catch (err) { console.error("Update Error:", err); } finally { setIsUpdating(false); }
+  };
+
+  if (loading || !dict) return (
+    <div className="flex flex-col justify-center items-center h-screen">
+      <RefreshCw className="animate-spin text-emerald-500 mb-4" size={32} />
+      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-500">Syncing History...</span>
     </div>
   );
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-24 px-4 pt-6 animate-in fade-in duration-500">
-      <header className="flex justify-between items-center mb-8 px-2">
+    <div className="max-w-2xl mx-auto space-y-6 pb-24 px-4 pt-6 animate-in fade-in duration-700">
+      <header className="flex justify-between items-center mb-4 px-2 text-slate-900 dark:text-white">
         <div>
-          <h1 className="text-2xl font-black text-white uppercase tracking-tighter italic">Daily Status</h1>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-2">Reset at 03:00 AM</p>
+          <h1 className="text-2xl font-black uppercase tracking-tighter italic leading-none">History</h1>
+          <p className="text-[10px] text-emerald-500 font-bold uppercase tracking-widest mt-2 flex items-center gap-1">
+             <Zap size={10} fill="currentColor" /> {lang === 'th' ? "ข้อมูลวันนี้" : "Today's Insights"}
+          </p>
         </div>
-        <div className="h-10 w-10 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-500">
-          <Flame size={20} fill="currentColor" />
+        <div className="h-10 w-10 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400">
+          <Calendar size={18} />
         </div>
       </header>
 
-      {/* 🟢 ส่วนวงแหวนสรุป (ตอนนี้จะเปลี่ยนตาม User แล้ว) */}
-      <section className="space-y-4">
-        <div className="bg-white/[0.03] border border-white/10 rounded-[2.5rem] p-8 flex flex-col items-center relative overflow-hidden shadow-2xl">
-            <div className="relative h-48 w-48">
+      <section className="grid lg:grid-cols-2 gap-4 items-center">
+        <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-8 flex flex-col items-center shadow-xl">
+            <div className="relative h-40 w-40">
                 <svg className="h-full w-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-white/5" strokeWidth="2.5" />
-                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-emerald-500 transition-all duration-1000 ease-out shadow-[0_0_15px_rgba(16,185,129,0.3)]" strokeWidth="2.5" strokeDasharray={`${calPercentage}, 100`} strokeLinecap="round" />
+                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-slate-100 dark:stroke-white/5" strokeWidth="2.5" />
+                    <circle cx="18" cy="18" r="16" fill="none" className="stroke-emerald-500 transition-all duration-1000" strokeWidth="2.5" strokeDasharray={`${calPercentage}, 100`} strokeLinecap="round" />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-5xl font-black text-white tracking-tighter">{Math.round(stats.cal)}</span>
-                    <div className="w-12 h-[1px] bg-white/20 my-1.5"></div>
-                    <span className="text-[11px] text-gray-500 uppercase font-black tracking-widest">{goals.calories} kcal</span>
+                    <span className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter italic">{Math.round(stats.cal)}</span>
+                    <span className="text-[9px] text-gray-400 uppercase font-bold tracking-widest mt-1">/ {goals.calories} KCAL</span>
                 </div>
             </div>
-            <p className="mt-4 text-[11px] font-black text-emerald-500 uppercase tracking-[0.3em]">Calories Today</p>
         </div>
-        <div className="grid grid-cols-1 gap-3">
-          <MacroRing label="Protein (เนื้อ)" current={stats.pro} goal={goals.protein} colorClass="stroke-blue-400" icon={Beef} />
-          <MacroRing label="Carbohydrates (ข้าว)" current={stats.carb} goal={goals.carbs} colorClass="stroke-yellow-400" icon={Wheat} />
-          <MacroRing label="Fats (ไขมัน)" current={stats.fat} goal={goals.fat} colorClass="stroke-rose-500" icon={Droplets} />
+        <div className="space-y-3">
+          <MacroRing label={lang === 'th' ? "โปรตีน" : "Protein"} current={stats.pro} goal={goals.protein} colorClass="stroke-blue-500" icon={Beef} />
+          <MacroRing label={lang === 'th' ? "คาร์บ" : "Carbs"} current={stats.carb} goal={goals.carbs} colorClass="stroke-amber-500" icon={Wheat} />
+          <MacroRing label={lang === 'th' ? "ไขมัน" : "Fats"} current={stats.fat} goal={goals.fat} colorClass="stroke-rose-500" icon={Droplets} />
         </div>
       </section>
 
-      {/* 🔍 ระบบ Filter วันที่ */}
       <div className="px-2">
-        <div className="relative group">
-          <input 
-            type="date" 
-            value={filterDate}
-            onChange={(e) => {setFilterDate(e.target.value); setShowAll(true);}}
-            className="w-full bg-white/5 border border-white/10 rounded-2xl p-3 pl-10 text-xs font-bold text-gray-300 focus:outline-none focus:border-emerald-500/50 transition-all appearance-none"
-            style={{ colorScheme: 'dark' }}
-          />
-          <Calendar className="absolute left-3 top-3 text-gray-500 group-focus-within:text-emerald-500 transition-colors" size={16} />
+        <div className="relative">
+          <input type="date" value={filterDate} onChange={(e) => {setFilterDate(e.target.value); setShowAll(true);}} className="w-full bg-slate-100 dark:bg-white/5 border-none rounded-2xl p-3 pl-10 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-gray-400 outline-none focus:ring-2 ring-emerald-500/20" />
+          <Calendar className="absolute left-3 top-3 text-gray-400" size={14} />
           {filterDate && (
-            <button onClick={() => {setFilterDate(""); setShowAll(false);}} className="absolute right-3 top-3 text-[10px] font-black text-emerald-500 uppercase">Clear</button>
+            <button onClick={() => setFilterDate("")} className="absolute right-3 top-2.5 p-1 bg-white dark:bg-white/10 rounded-lg text-gray-400"><X size={14}/></button>
           )}
         </div>
       </div>
 
-      {/* 🟢 รายการอาหาร */}
-      <div className="mt-6 space-y-6">
-        <h3 className="text-[11px] font-black text-gray-500 uppercase tracking-[0.3em] px-2 flex justify-between items-center">
-           <span>{filterDate ? `Result: ${filterDate}` : "Today's Meals"}</span>
-           {!filterDate && todaysLogs.length > 0 && <span className="text-emerald-500/50">{todaysLogs.length} items</span>}
-        </h3>
-
-        {(filterDate ? filteredLogs : todaysLogs).length === 0 ? (
-          <div className="py-12 text-center border border-dashed border-white/10 rounded-[2.5rem] bg-white/[0.01]">
-             <AlertCircle size={20} className="mx-auto text-gray-700 mb-2" />
-             <p className="text-gray-600 text-[10px] font-black uppercase tracking-widest">ยังไม่มีการบันทึกอาหาร</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {(filterDate ? filteredLogs : todaysLogs).map((log) => (
-              <MealCard key={log._id} log={log} isToday={getCustomDateStr(log.loggedAt || log.createdAt) === todayStr} onDelete={handleDelete} />
-            ))}
-          </div>
-        )}
+      <div className="space-y-4">
+        {(filterDate ? filteredLogs : todaysLogs).map((log) => (
+          <MealCard key={log._id} log={log} isToday={getCustomDateStr(log.loggedAt || log.createdAt) === todayStr} onDelete={handleDelete} onEdit={() => openEditModal(log)} lang={lang} />
+        ))}
 
         {!filterDate && pastLogs.length > 0 && (
-          <div className="pt-4">
-            <button 
-              onClick={() => setShowAll(!showAll)}
-              className="w-full py-4 border border-white/5 bg-white/[0.02] rounded-2xl flex items-center justify-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:bg-white/5 transition-all"
-            >
-              {showAll ? <><ChevronUp size={14} /> Hide Past History</> : <><ChevronDown size={14} /> Show Past History ({pastLogs.length})</>}
+          <div className="pt-2">
+            <button onClick={() => setShowAll(!showAll)} className="w-full py-4 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-gray-400 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all">
+              {showAll ? "Close History" : `Past Records (${pastLogs.length})`}
             </button>
-            
             {showAll && (
-              <div className="space-y-3 mt-4 animate-in slide-in-from-top-4 duration-500">
+              <div className="space-y-4 mt-4 animate-in fade-in slide-in-from-bottom-4">
                 {pastLogs.map((log) => (
-                  <MealCard key={log._id} log={log} isToday={false} onDelete={handleDelete} />
+                  <MealCard key={log._id} log={log} isToday={false} onDelete={handleDelete} onEdit={() => openEditModal(log)} lang={lang} />
                 ))}
               </div>
             )}
           </div>
         )}
       </div>
+
+      {editingLog && (() => {
+        const base = {
+          cal: Number(editingLog.thaiDish?.originalCalories || editingLog.calories || editingLog.totalCalories || 0),
+          pro: Number(editingLog.thaiDish?.originalProtein || editingLog.protein || 0),
+          carb: Number(editingLog.thaiDish?.originalCarbs || editingLog.carbs || 0),
+          fat: Number(editingLog.thaiDish?.originalFat || editingLog.fat || 0)
+        };
+        const multiplier = (100 - remainingPercent) / 100;
+        const live = {
+          cal: Math.round(base.cal * multiplier),
+          pro: Math.round(base.pro * multiplier),
+          carb: Math.round(base.carb * multiplier),
+          fat: Math.round(base.fat * multiplier)
+        };
+
+        return (
+          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center px-4">
+            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setEditingLog(null)} />
+            <div className="bg-white dark:bg-neutral-900 rounded-[2.5rem] w-full max-w-md p-8 relative z-10 shadow-2xl border border-white/10 animate-in slide-in-from-bottom-10">
+              <div className="w-12 h-1 bg-slate-200 dark:bg-white/10 rounded-full mx-auto mb-6 sm:hidden" />
+              
+              <div className="flex justify-between items-start mb-6">
+                 <div>
+                    <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">Adjust Portion</h2>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{editingLog.foodName}</p>
+                 </div>
+                 <button onClick={() => setEditingLog(null)} className="p-2 bg-slate-100 dark:bg-white/5 rounded-xl text-gray-400"><X size={18}/></button>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-white/5 rounded-[2rem] p-6 mb-8 border border-slate-100 dark:border-white/5 text-center relative overflow-hidden">
+                <div className="flex flex-col items-center relative z-10">
+                  <span className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter italic">{live.cal}</span>
+                  <span className="text-emerald-500 font-black text-xs uppercase tracking-widest mt-1">Calories Intake</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 mt-6 pt-6 border-t border-slate-200 dark:border-white/5">
+                  <div className="flex flex-col items-center">
+                    <Beef size={14} className="text-blue-500 mb-1" />
+                    <span className="text-xs font-black text-slate-800 dark:text-white">{live.pro}g</span>
+                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Pro</span>
+                  </div>
+                  <div className="flex flex-col items-center border-x border-slate-200 dark:border-white/5">
+                    <Wheat size={14} className="text-amber-500 mb-1" />
+                    <span className="text-xs font-black text-slate-800 dark:text-white">{live.carb}g</span>
+                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Carb</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <Droplets size={14} className="text-rose-500 mb-1" />
+                    <span className="text-xs font-black text-slate-800 dark:text-white">{live.fat}g</span>
+                    <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Fat</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="flex justify-between items-center px-1">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] italic">{lang === 'th' ? "ทานเหลือทิ้งกี่ %" : "Leftover %"}</span>
+                  <span className="text-2xl font-black text-emerald-500 tracking-tighter">{remainingPercent}%</span>
+                </div>
+                <input type="range" min="0" max="100" step="5" value={remainingPercent} onChange={(e) => setRemainingPercent(Number(e.target.value))} className="w-full h-2 bg-slate-100 dark:bg-white/10 rounded-lg appearance-none cursor-pointer accent-emerald-500 outline-none" />
+
+                <div className="flex gap-3">
+                  <button onClick={() => setRemainingPercent(0)} className="p-4 bg-slate-100 dark:bg-white/5 rounded-2xl text-gray-400 hover:text-slate-900 dark:hover:text-white transition-colors"><RotateCcw size={20}/></button>
+                  <button onClick={handleUpdatePercent} disabled={isUpdating} className="flex-1 bg-emerald-500 text-black py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest shadow-xl shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2">
+                    {isUpdating ? <Loader2 className="animate-spin" size={16}/> : <><Save size={16}/> {lang === 'th' ? "ยืนยันการบันทึก" : "Confirm Update"}</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }
 
-function MealCard({ log, isToday, onDelete }: { log: MealLog, isToday: boolean, onDelete: (id: string) => void }) {
+function MealCard({ log, isToday, onDelete, onEdit, lang }: any) {
   const logDate = new Date(log.loggedAt || log.createdAt || "");
+  const isEdited = (log.remainingPercent || 0) > 0;
+
   return (
-    <div className="flex gap-4 rounded-[2rem] border border-white/5 bg-white/[0.02] p-4 group hover:bg-white/[0.04] transition-all">
-      {log.imageUrl && <img src={log.imageUrl} className="h-16 w-16 rounded-2xl object-cover ring-1 ring-white/10" />}
-      <div className="flex-1 min-w-0 flex flex-col justify-center">
+    <div className="flex gap-4 rounded-[2rem] border border-slate-200 dark:border-white/5 bg-white dark:bg-white/[0.02] p-4 group hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all relative shadow-sm">
+      <div className="w-16 h-16 rounded-2xl overflow-hidden bg-slate-100 dark:bg-white/5 flex-shrink-0">
+        {log.imageUrl ? <img src={log.imageUrl} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-gray-300"><Flame size={20}/></div>}
+      </div>
+      <div className="flex-1 min-w-0">
         <div className="flex justify-between items-start mb-1">
-          <h4 className="font-black text-sm text-gray-200 truncate pr-8 uppercase italic leading-none">{log.foodName || "Unknown"}</h4>
-          <span className="text-emerald-500 font-black text-sm">{Math.round(log.totalCalories || log.calories || 0)} <span className="text-[8px]">kcal</span></span>
+          <h4 className="font-black text-[13px] text-slate-800 dark:text-white uppercase italic truncate pr-4">
+            {log.foodName || "Meal"}
+            {isEdited && <span className="ml-2 text-[8px] text-emerald-500 not-italic lowercase tracking-normal bg-emerald-500/10 px-1.5 py-0.5 rounded-md">-{log.remainingPercent}%</span>}
+          </h4>
+          <span className="text-emerald-600 dark:text-emerald-500 font-black text-sm italic">{Math.round(log.calories || 0)} <span className="text-[8px] font-bold">KCAL</span></span>
         </div>
-        <div className="flex items-center gap-2 mb-2 font-bold uppercase">
-            <span className={`text-[8px] px-2 py-0.5 rounded-md ${isToday ? 'bg-emerald-500/20 text-emerald-400' : 'bg-white/10 text-gray-500'}`}>
-                {isToday ? "TODAY" : logDate.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })}
+        <div className="flex items-center gap-2 mb-2">
+            <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest bg-slate-100 dark:bg-white/5 px-2 py-0.5 rounded-lg">
+                {isToday ? "Today" : logDate.toLocaleDateString(lang === 'th' ? 'th-TH' : 'en-US', { day: '2-digit', month: 'short' })}
             </span>
-            <span className="text-[9px] text-gray-600">{logDate.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })} น.</span>
+            <span className="text-[8px] font-bold text-gray-300 dark:text-gray-600">{logDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
-        <div className="flex gap-4">
-          <div className="flex items-center gap-1"><Beef size={10} className="text-blue-400 opacity-70" /><span className="text-[10px] font-bold text-gray-500">{Math.round(log.protein || 0)}g</span></div>
-          <div className="flex items-center gap-1"><Wheat size={10} className="text-yellow-400 opacity-70" /><span className="text-[10px] font-bold text-gray-500">{Math.round(log.carbs || 0)}g</span></div>
-          <div className="flex items-center gap-1"><Droplets size={10} className="text-rose-400 opacity-70" /><span className="text-[10px] font-bold text-gray-500">{Math.round(log.fat || 0)}g</span></div>
+        <div className="flex gap-3">
+          <MacroMini icon={Beef} val={log.protein} color="text-blue-500" />
+          <MacroMini icon={Wheat} val={log.carbs} color="text-amber-500" />
+          <MacroMini icon={Droplets} val={log.fat} color="text-rose-500" />
         </div>
       </div>
-      <button onClick={() => onDelete(log._id)} className="p-2 text-red-500/30 hover:text-red-500 transition-colors"><Trash2 size={16} /></button>
+      <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <button onClick={onEdit} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"><Edit2 size={14} /></button>
+        <button onClick={() => onDelete(log._id)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"><Trash2 size={14} /></button>
+      </div>
     </div>
   );
+}
+
+function MacroMini({ icon: Icon, val, color }: any) {
+    return (
+        <div className="flex items-center gap-1">
+            <Icon size={10} className={`${color} opacity-60`} />
+            <span className="text-[9px] font-black text-gray-400 dark:text-gray-500">{Math.round(val || 0)}g</span>
+        </div>
+    );
 }

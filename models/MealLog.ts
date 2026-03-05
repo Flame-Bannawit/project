@@ -13,13 +13,16 @@ const MealLogSchema = new mongoose.Schema(
     foodName: String, 
     thaiName: String,
 
-    // ข้อมูลสารอาหาร (หลังคำนวณ Portion)
-    calories: Number,      // ใช้ฟิลด์นี้เป็นหลัก
-    totalCalories: Number, // เพิ่มตัวนี้เข้าไปเพื่อให้ตรงกับหน้า History
+    // ข้อมูลสารอาหารปัจจุบัน (ค่าที่เปลี่ยนแปลงตามการ Edit)
+    calories: Number,
+    totalCalories: Number,
     protein: Number,
     fat: Number,
     carbs: Number,
     portion: Number,
+
+    // 🆕 เพิ่มเปอร์เซ็นต์ที่เหลือ (0 = กินหมด, 100 = ไม่กินเลย)
+    remainingPercent: { type: Number, default: 0 },
 
     // ผลจาก AI และ Mapping
     aiLabel: String,
@@ -30,7 +33,13 @@ const MealLogSchema = new mongoose.Schema(
       protein: Number,
       fat: Number,
       carbs: Number,
-      healthNote: String, // เพิ่มเพื่อให้เก็บ Note จาก AI ได้
+      healthNote: String,
+      
+      // 🆕 ฟิลด์เก็บค่าต้นฉบับ 100% จาก AI (ห้ามแก้ไขฟิลด์เหล่านี้หลังบันทึก)
+      originalCalories: Number,
+      originalProtein: Number,
+      originalFat: Number,
+      originalCarbs: Number,
     },
 
     thaiDishId: String,

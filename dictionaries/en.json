@@ -1,0 +1,23 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "analyze": "Analyze",
+    "history": "History",
+    "profile": "Profile",
+    "logout": "Logout",
+    "logout_confirm": "Are you sure you want to logout?"
+  },
+  "profile": {
+    "title": "Edit Body Profile",
+    "name": "Username",
+    "gender": "Gender",
+    "birthDate": "Birth Date",
+    "activity": "Activity Level",
+    "weight": "Weight (kg)",
+    "height": "Height (cm)",
+    "saveBtn": "Update Profile",
+    "calculating": "Calculating...",
+    "bmiTitle": "Health Index: BMI",
+    "targetTitle": "Daily Nutrition Target"
+  }
+}
