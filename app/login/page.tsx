@@ -7,8 +7,8 @@ import {
   Eye, EyeOff, Mail, Lock, LogIn, Loader2, Sparkles, 
   ChevronLeft, Sun, Moon, Languages 
 } from "lucide-react";
-import { useTheme } from "next-themes"; // Hook สำหรับเปลี่ยนธีม
-import { getDictionary } from "@/lib/get-dictionary"; // ตัวดึงคำแปล
+import { useTheme } from "next-themes";
+import { getDictionary } from "@/lib/get-dictionary";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
@@ -18,7 +18,6 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  // 🌐 ระบบจัดการภาษาและธีม
   const { theme, setTheme } = useTheme();
   const [lang, setLang] = useState<'en' | 'th'>('th');
   const [mounted, setMounted] = useState(false);
@@ -64,6 +63,8 @@ export default function LoginPage() {
           if (email === "useradmin@test.com") {
             router.push("/admin");
           } else {
+            // ✅ แอบฝังคำสั่งไว้ว่า "เพิ่ง Login เข้ามาใหม่นะ โชว์ Popup ด้วย!"
+            sessionStorage.setItem("show_welcome_popup", "true");
             router.push("/");
           }
           router.refresh();
@@ -88,7 +89,7 @@ export default function LoginPage() {
       <div className="w-full max-w-sm flex items-center justify-between mb-6">
         <Link 
           href="/" 
-          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-emerald-500 transition-all group"
+          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-gray-500 hover:text-emerald-500 transition-all group"
         >
           <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 group-hover:border-emerald-500/50 group-hover:bg-emerald-500/10 transition-all text-slate-600 dark:text-gray-400">
             <ChevronLeft size={16} />
@@ -108,7 +109,7 @@ export default function LoginPage() {
           {/* 🌐 ปุ่มสลับภาษา */}
           <button 
             onClick={toggleLang}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-[10px] font-black uppercase tracking-tighter transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-xs font-black uppercase tracking-tighter transition-all"
           >
             <Languages size={14} />
             {lang === 'en' ? "TH" : "EN"}
@@ -124,7 +125,7 @@ export default function LoginPage() {
         <h1 className="text-3xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white">
           {lang === 'th' ? "ยินดีต้อนรับกลับมา" : "Welcome Back"}
         </h1>
-        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest max-w-[200px] mx-auto opacity-60">
+        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest max-w-[200px] mx-auto opacity-60">
           {lang === 'th' ? "เข้าสู่ระบบเพื่อเข้าถึงแดชบอร์ด HealthyMate" : "Sign in to access your HealthyMate dashboard"}
         </p>
       </div>
@@ -135,7 +136,7 @@ export default function LoginPage() {
           
           {/* Email Field */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-4">
+            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-4">
               {lang === 'th' ? "อีเมลบัญชี" : "Account Email"}
             </label>
             <div className="relative group">
@@ -155,7 +156,7 @@ export default function LoginPage() {
 
           {/* Password Field */}
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-4">
+            <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest ml-4">
               {lang === 'th' ? "รหัสผ่านปลอดภัย" : "Secure Password"}
             </label>
             <div className="relative group">
@@ -182,7 +183,7 @@ export default function LoginPage() {
 
           {/* Feedback Message */}
           {msg && (
-            <div className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2 ${msg.type === "success" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20"}`}>
+            <div className={`p-4 rounded-2xl text-xs font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2 ${msg.type === "success" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20"}`}>
               <div className="flex items-center justify-center gap-2">
                 <Sparkles size={14} className={msg.type === "success" ? "animate-pulse" : ""} />
                 {msg.text}
@@ -203,7 +204,7 @@ export default function LoginPage() {
 
         {/* Footer Link */}
         <div className="pt-2 text-center">
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">
+          <p className="text-xs text-gray-400 dark:text-gray-500 font-bold uppercase tracking-widest">
             {lang === 'th' ? "ยังไม่มีบัญชี?" : "New here?"}{" "}
             <Link href="/register" className="text-emerald-600 dark:text-emerald-500 hover:text-emerald-400 transition-colors underline underline-offset-8">
               {lang === 'th' ? "สร้างบัญชีใหม่" : "Create New Account"}

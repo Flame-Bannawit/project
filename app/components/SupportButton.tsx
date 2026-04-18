@@ -62,7 +62,7 @@ export default function SupportButton() {
                 <MessageSquareText size={24} />
               </div>
               <h3 className="text-xl font-black italic uppercase tracking-tighter">Support <span className="text-emerald-500">& Feedback</span></h3>
-              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1">แจ้งปัญหาหรือข้อเสนอแนะให้เราทราบ</p>
+              <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1">แจ้งปัญหาหรือข้อเสนอแนะให้เราทราบ</p>
             </div>
 
             {sent ? (
@@ -83,7 +83,7 @@ export default function SupportButton() {
                 />
                 <button
                   disabled={loading}
-                  className="w-full bg-emerald-500 text-black font-black py-4 rounded-2xl text-[10px] uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all disabled:opacity-50"
+                  className="w-full bg-emerald-500 text-black font-black py-4 rounded-2xl text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-2 hover:bg-emerald-400 transition-all disabled:opacity-50"
                 >
                   {loading ? <Loader2 className="animate-spin" size={16} /> : "Send Message"}
                 </button>

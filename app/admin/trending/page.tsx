@@ -53,7 +53,7 @@ export default function TrendingPage() {
               <h1 className="text-2xl font-black uppercase tracking-tighter italic leading-none text-rose-500">
                 {lang === 'th' ? "10 อันดับเมนูยอดฮิต" : "Food Hot Trends"}
               </h1>
-              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mt-1">
+              <p className="text-gray-500 text-xs font-bold uppercase tracking-widest mt-1">
                 {lang === 'th' ? "เมนูที่มีการสแกนสูงสุดในระบบ" : "Top 10 most scanned menus in system"}
               </p>
             </div>
@@ -66,7 +66,7 @@ export default function TrendingPage() {
         {loading ? (
           <div className="py-32 text-center">
             <Loader2 className="animate-spin mx-auto text-rose-500" size={40} />
-            <p className="mt-4 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500">
+            <p className="mt-4 text-xs font-black uppercase tracking-[0.2em] text-gray-500">
               {lang === 'th' ? "กำลังประมวลผลข้อมูลสถิติ..." : "Processing analytics data..."}
             </p>
           </div>
@@ -105,13 +105,13 @@ export default function TrendingPage() {
                   <div className="flex items-center gap-4 mt-2">
                     <div className="flex items-center gap-1.5">
                       <TrendingUp size={12} className="text-emerald-500" />
-                      <p className="text-[10px] font-black text-slate-500 dark:text-gray-300 uppercase">
+                      <p className="text-xs font-black text-slate-500 dark:text-gray-300 uppercase">
                         {lang === 'th' ? "สแกน" : "Scanned"} <span className="text-slate-900 dark:text-white text-xs">{item.count}</span> {lang === 'th' ? "ครั้ง" : "Times"}
                       </p>
                     </div>
                     <div className="flex items-center gap-1.5 border-l border-slate-200 dark:border-white/10 pl-4">
                       <Utensils size={12} className="text-blue-500" />
-                      <p className="text-[10px] font-black text-slate-500 dark:text-gray-300 uppercase">
+                      <p className="text-xs font-black text-slate-500 dark:text-gray-300 uppercase">
                         {lang === 'th' ? "เฉลี่ย" : "Avg"} <span className="text-slate-900 dark:text-white text-xs">{Math.round(item.avgCalories)}</span> KCAL
                       </p>
                     </div>
@@ -149,7 +149,7 @@ export default function TrendingPage() {
 
         {/* สรุปท้ายหน้า */}
         <footer className="bg-white dark:bg-rose-500/5 border border-slate-200 dark:border-rose-500/10 p-6 rounded-[2.5rem] text-center shadow-sm">
-           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400 dark:text-rose-500/60">
+           <p className="text-xs font-black uppercase tracking-[0.3em] text-slate-400 dark:text-rose-500/60">
              {lang === 'th' ? "อัปเดตข้อมูลล่าสุดเมื่อ" : "Last updated at"}: {new Date().toLocaleTimeString(lang === 'th' ? 'th-TH' : 'en-GB')}
            </p>
         </footer>

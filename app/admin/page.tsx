@@ -47,22 +47,30 @@ export default function AdminPage() {
     if (isClient) fetchStats(range);
   }, [range, isClient]);
 
-  // 🎯 ปรับปรุง Logic การดึงข้อมูลกราฟให้พล็อต "จุดรายวัน" ให้ติดแน่นอน
+  // 🎯 แก้ไขจุดบอด: ทำให้กราฟดึงข้อมูลรายวันมาแสดงผลได้ตรงกับสรุปด้านล่าง
   const getChartData = () => {
-    // 🏠 1. กราฟ Home (ยอดสแกน)
+    // 🏠 1. กราฟ Home (ยอดสแกนรายวัน)
+    // ใช้ข้อมูลตรงจาก charts.usage ที่ API คำนวณมาให้แล้ว
     const usage = data?.charts?.usage?.map((d: any) => ({
-      name: d.name || d._id || "N/A",
-      value: Number(d.value ?? d.count ?? 0)
+      name: d.name, // เช่น "11 Mar"
+      value: Number(d.value ?? 0)
     })) || [];
 
-    // 👥 2. กราฟ All Users (พล็อตรายวัน)
-    // แก้ไข Key ให้ดักฟังทั้ง 'users' และ 'count' เพื่อให้เส้นกราฟปรากฏ
-    const userGrowth = data?.charts?.userGrowth?.map((d: any) => ({
-      name: d.name || d._id || "N/A",
-      users: Number(d.users ?? d.count ?? d.value ?? 0) 
-    })) || [];
+    // 👥 2. กราฟ All Users (ยอดสะสม Cumulative)
+    // ปรับ Logic การคำนวณยอดสะสมให้สัมพันธ์กับยอดรวมทั้งหมด
+    const userGrowthData = data?.charts?.userGrowth || [];
+    let runningTotal = (data?.summary?.totalUsers || 0) - userGrowthData.reduce((acc: number, curr: any) => acc + (curr.count || 0), 0);
+    if (runningTotal < 0) runningTotal = 0;
 
-    // 🕒 3. Time และ 🎂 4. Age (Mock สำรองถ้า API ว่าง)
+    const userGrowth = userGrowthData.map((d: any) => {
+      runningTotal += Number(d.count ?? 0);
+      return {
+        name: d.name,
+        users: runningTotal 
+      };
+    }) || [];
+
+    // 🕒 3. Time และ 🎂 4. Age (Fallback)
     const time = (data?.charts?.time?.length > 0) ? data.charts.time : [
       { name: '06:00', v: 4 }, { name: '12:00', v: 15 }, { name: '18:00', v: 10 }, { name: '22:00', v: 2 }
     ];
@@ -84,10 +92,10 @@ export default function AdminPage() {
         
         <header className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none transition-colors">
+            <h1 className="text-4xl font-black uppercase tracking-tighter italic text-slate-900 dark:text-white leading-none">
               Admin<span className="text-emerald-500">Panel</span>
             </h1>
-            <p className="text-gray-500 dark:text-gray-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
+            <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-[0.3em] mt-3 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" /> 
               {lang === 'th' ? "สถานะระบบ: ปกติ" : "System Status: Operational"}
             </p>
@@ -101,7 +109,7 @@ export default function AdminPage() {
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
             {["Home", "All Users", "Time", "Age"].map((tab) => (
               <button key={tab} onClick={() => setActiveTab(tab)}
-                className={`px-8 py-3 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border shrink-0 ${
+                className={`px-8 py-3 rounded-full text-xs font-black uppercase tracking-widest transition-all border shrink-0 ${
                   activeTab === tab ? "bg-emerald-500 text-black border-emerald-500 shadow-xl shadow-emerald-500/20" : "bg-white dark:bg-white/5 text-slate-400 dark:text-gray-500 border-slate-200 dark:border-white/10 hover:border-emerald-500 shadow-sm"
                 }`}
               >
@@ -111,14 +119,14 @@ export default function AdminPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-            <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 lg:col-span-2 rounded-[3rem] p-10 min-h-[480px] relative overflow-hidden shadow-2xl transition-all">
+            <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 lg:col-span-2 rounded-[3rem] p-10 min-h-[480px] relative overflow-hidden shadow-2xl">
                 <div className="flex justify-between items-center mb-12 relative z-10">
                   <h3 className="font-black text-sm uppercase tracking-widest text-emerald-500 italic flex items-center gap-2">
                     <Activity size={18} /> {activeTab} Visualization
                   </h3>
                   <div className="flex bg-slate-100 dark:bg-black/40 p-1 rounded-xl border border-slate-200 dark:border-white/5">
                     {["7d", "1m", "3m"].map((r) => (
-                      <button key={r} onClick={() => setRange(r)} className={`px-4 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${range === r ? "bg-emerald-500 text-black" : "text-gray-500 hover:text-emerald-500"}`}>{r}</button>
+                      <button key={r} onClick={() => setRange(r)} className={`px-4 py-1.5 rounded-lg text-[12px] font-black uppercase transition-all ${range === r ? "bg-emerald-500 text-black" : "text-gray-500 hover:text-emerald-500"}`}>{r}</button>
                     ))}
                   </div>
                 </div>
@@ -132,7 +140,7 @@ export default function AdminPage() {
                         <XAxis dataKey="name" stroke="#888" fontSize={10} tickLine={false} axisLine={false} dy={10} />
                         <YAxis stroke="#888" fontSize={10} tickLine={false} axisLine={false} />
                         <Tooltip contentStyle={{backgroundColor: '#000', border: 'none', borderRadius: '16px', fontSize: '10px', color: '#fff'}} />
-                        <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorVal)" strokeWidth={4} dot={{ r: 4, fill: '#10b981', strokeWidth: 2, stroke: '#fff' }} />
+                        <Area type="monotone" dataKey="value" stroke="#10b981" fillOpacity={1} fill="url(#colorVal)" strokeWidth={4} dot={false} />
                       </AreaChart>
                     ) : activeTab === "All Users" ? (
                       <LineChart data={cData.userGrowth}>
@@ -140,15 +148,7 @@ export default function AdminPage() {
                          <XAxis dataKey="name" stroke="#888" fontSize={10} axisLine={false} dy={10} tickLine={false} />
                          <YAxis stroke="#888" fontSize={10} axisLine={false} tickLine={false} />
                          <Tooltip contentStyle={{backgroundColor: '#000', border: 'none', borderRadius: '16px', fontSize: '10px', color: '#fff'}} />
-                         {/* 🎯 คืนค่าจุด Dot รายวัน และเส้นแบบ monotone */}
-                         <Line 
-                          type="monotone"
-                          dataKey="users"
-                          stroke="#3b82f6"
-                          strokeWidth={4}
-                          dot={{ r: 5, fill: '#3b82f6', strokeWidth: 2, stroke: '#fff' }} 
-                          activeDot={{ r: 8, strokeWidth: 0 }} 
-                         />
+                         <Line type="monotone" dataKey="users" stroke="#3b82f6" strokeWidth={4} dot={false} activeDot={{ r: 8, strokeWidth: 0 }} />
                       </LineChart>
                     ) : activeTab === "Time" ? (
                       <BarChart data={cData.time}>
@@ -198,7 +198,7 @@ function StatCard({ title, value, icon, color }: any) {
     <div className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 p-8 rounded-[2.5rem] flex items-center gap-6 group hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-all shadow-xl">
       <div className={`p-4 rounded-2xl bg-slate-50 dark:bg-white/5 ${color} group-hover:scale-110 transition-transform shadow-sm`}>{icon}</div>
       <div>
-        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{title}</p>
+        <p className="text-xs font-black text-gray-400 uppercase tracking-widest">{title}</p>
         <p className="text-3xl font-black text-slate-900 dark:text-white italic tracking-tighter">{value}</p>
       </div>
     </div>
@@ -212,7 +212,7 @@ function MenuButton({ title, desc, icon, href, color }: any) {
       <div className="relative z-10 flex flex-col items-center text-center">
         <div className={`h-20 w-20 rounded-[2rem] ${color} flex items-center justify-center text-black shadow-2xl mb-8 group-hover:rotate-6 transition-all`}>{icon}</div>
         <h4 className="text-2xl font-black text-slate-900 dark:text-white italic uppercase tracking-tighter mb-2">{title}</h4>
-        <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-relaxed opacity-60">{desc}</p>
+        <p className="text-xs text-gray-500 font-bold uppercase tracking-widest leading-relaxed opacity-60">{desc}</p>
         <div className="mt-8 p-3 rounded-full bg-white/5 border border-white/10 text-slate-900 dark:text-white opacity-0 group-hover:opacity-100 transition-all translate-y-4 group-hover:translate-y-0"><ArrowUpRight size={20} /></div>
       </div>
     </Link>

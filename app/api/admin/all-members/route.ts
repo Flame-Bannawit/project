@@ -2,12 +2,12 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongoose";
 import User from "@/models/User";
-import { MealLog } from "@/models/MealLog"; // นำเข้าเพื่อลบประวัติการกินด้วย
+import { MealLog } from "@/models/MealLog"; 
 import getCurrentUser from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-// 🔍 1. ฟังก์ชันดึงรายชื่อทั้งหมด (เดิม)
+// 🔍 1. ฟังก์ชันดึงรายชื่อทั้งหมด พร้อมนับจำนวนมื้ออาหาร
 export async function GET() {
   try {
     const adminUser = (await getCurrentUser()) as any;
@@ -18,15 +18,39 @@ export async function GET() {
     }
 
     await connectDB();
-    const users = await User.find({}).select("-password").sort({ createdAt: -1 });
+
+    // 🎯 ใช้ Aggregation เพื่อรวมข้อมูลจำนวนมื้ออาหาร (Activity)
+    const usersWithStats = await User.aggregate([
+      {
+        $lookup: {
+          from: "meallogs", // ชื่อคอลเลกชันใน MongoDB
+          localField: "_id",
+          foreignField: "userId",
+          as: "meals"
+        }
+      },
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          role: 1,
+          heightCm: 1,
+          weightKg: 1,
+          createdAt: 1,
+          // 🔢 นับจำนวนมื้ออาหารใส่ในตัวแปร totalMealLogs
+          totalMealLogs: { $size: "$meals" }
+        }
+      },
+      { $sort: { createdAt: -1 } }
+    ]);
     
-    return NextResponse.json(users);
+    return NextResponse.json(usersWithStats);
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
 
-// 🗑️ 2. ฟังก์ชันลบ User (เพิ่มใหม่)
+// 🗑️ 2. ฟังก์ชันลบ User
 export async function DELETE(req: Request) {
   try {
     const adminUser = (await getCurrentUser()) as any;
@@ -36,7 +60,6 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    // ดึง id จาก Query String (?id=...)
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
 
@@ -46,7 +69,7 @@ export async function DELETE(req: Request) {
 
     await connectDB();
 
-    // ลบข้อมูลที่เกี่ยวข้องเพื่อไม่ให้ค้างใน Database
+    // ลบประวัติการกินทั้งหมดของ User คนนี้ก่อน
     await MealLog.deleteMany({ userId: id }); 
     
     // ลบตัว User

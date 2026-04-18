@@ -1,4 +1,3 @@
-// models/User.ts
 import mongoose, { Schema, model, models, Document } from "mongoose";
 
 export interface IUser extends Document {
@@ -10,6 +9,7 @@ export interface IUser extends Document {
   heightCm: number;
   weightKg: number;
   activityLevel: number; 
+  goal: 'weight_loss' | 'health_maintenance' | 'muscle_gain' | 'none';
   role: 'user' | 'admin';
   dailyCalorieGoal: number;
   proteinGoal: number;
@@ -29,6 +29,11 @@ const UserSchema = new Schema<IUser>(
     heightCm: { type: Number, required: true },
     weightKg: { type: Number, required: true },
     activityLevel: { type: Number, required: true, default: 1.2 },
+    goal: { 
+      type: String, 
+      enum: ['weight_loss', 'health_maintenance', 'muscle_gain', 'none'], 
+      default: 'none' 
+    },
     role: { type: String, enum: ['user', 'admin'], default: 'user' },
     dailyCalorieGoal: { type: Number, default: 2000 },
     proteinGoal: { type: Number, default: 0 },
@@ -38,9 +43,8 @@ const UserSchema = new Schema<IUser>(
   { timestamps: true }
 );
 
-// ✅ เพิ่ม Middleware คำนวณอัตโนมัติก่อนบันทึก (Pre-save Hook)
+// ✅ Middleware คำนวณแคลอรี่ตาม "เป้าหมาย (Goal)" อัตโนมัติ
 UserSchema.pre("save", function (next) {
-  // คำนวณอายุจาก birthDate
   const today = new Date();
   const birth = new Date(this.birthDate);
   let age = today.getFullYear() - birth.getFullYear();
@@ -49,7 +53,7 @@ UserSchema.pre("save", function (next) {
     age--;
   }
 
-  // 1. สูตร Mifflin-St Jeor เพื่อหา BMR
+  // 1. Mifflin-St Jeor เพื่อหา BMR
   let bmr = 0;
   if (this.gender === "male") {
     bmr = 10 * this.weightKg + 6.25 * this.heightCm - 5 * age + 5;
@@ -57,18 +61,32 @@ UserSchema.pre("save", function (next) {
     bmr = 10 * this.weightKg + 6.25 * this.heightCm - 5 * age - 161;
   }
 
-  // 2. คำนวณ TDEE (Daily Calorie Goal)
-  // bmr * activityLevel (เช่น 1.2, 1.375, 1.55)
-  const tdee = Math.round(bmr * this.activityLevel);
+  // 2. คำนวณ TDEE เบื้องต้น
+  let tdee = Math.round(bmr * this.activityLevel);
+
+  // 🎯 ปรับ Calorie Goal ตามเป้าหมาย (Goal)
+  if (this.goal === 'weight_loss') {
+    tdee -= 500; // ลด 500 kcal เพื่อลดน้ำหนัก
+  } else if (this.goal === 'muscle_gain') {
+    tdee += 300; // เพิ่ม 300 kcal เพื่อสร้างกล้ามเนื้อ
+  }
+
   this.dailyCalorieGoal = tdee;
 
-  // 3. คำนวณสารอาหารหลัก (Macros) - สัดส่วนมาตรฐาน 40/30/30
-  // Protein (30%): 1g = 4kcal
-  this.proteinGoal = Math.round((tdee * 0.30) / 4);
-  // Fat (30%): 1g = 9kcal
-  this.fatGoal = Math.round((tdee * 0.30) / 9);
-  // Carbs (40%): 1g = 4kcal
-  this.carbsGoal = Math.round((tdee * 0.40) / 4);
+  // 3. คำนวณสารอาหารหลัก (Macros) ตามเป้าหมาย
+  if (this.goal === 'muscle_gain') {
+    this.proteinGoal = Math.round((tdee * 0.35) / 4);
+    this.fatGoal = Math.round((tdee * 0.25) / 9);
+    this.carbsGoal = Math.round((tdee * 0.40) / 4);
+  } else if (this.goal === 'weight_loss') {
+    this.proteinGoal = Math.round((tdee * 0.40) / 4);
+    this.fatGoal = Math.round((tdee * 0.25) / 9);
+    this.carbsGoal = Math.round((tdee * 0.35) / 4);
+  } else {
+    this.proteinGoal = Math.round((tdee * 0.30) / 4);
+    this.fatGoal = Math.round((tdee * 0.30) / 9);
+    this.carbsGoal = Math.round((tdee * 0.40) / 4);
+  }
 
   next();
 });

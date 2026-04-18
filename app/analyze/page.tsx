@@ -6,6 +6,7 @@ import { getDictionary } from "@/lib/get-dictionary";
 import Link from "next/link";
 
 type FoodItem = {
+  logId?: string; // 🆕 เก็บ ID ของ History ที่ API สร้างให้
   thaiName: string;
   baseCalories: number;
   protein: number;
@@ -23,7 +24,7 @@ export default function AnalyzePage() {
   const [previews, setPreviews] = useState<string[]>([]);
   const [results, setResults] = useState<FoodItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showSaveAlert, setShowSaveAlert] = useState(false); // 🚨 สำหรับแจ้งเตือน Alert
+  const [showSaveAlert, setShowSaveAlert] = useState(false);
   const [portion, setPortion] = useState<number>(1);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   
@@ -114,24 +115,48 @@ export default function AnalyzePage() {
     setLoading(true);
     setResults([]);
     const tempResults: FoodItem[] = [];
+    
     try {
       for (let i = 0; i < selectedImages.length; i++) {
         const imgFile = selectedImages[i];
         const formData = new FormData();
         formData.append("image", imgFile);
+        
         const res = await fetch("/api/analyze-food", { method: "POST", body: formData });
         const data = await res.json();
+        
         if (!res.ok) throw new Error(data.error || "Analysis failed");
-        const dish = data.thaiDish || data;
-        tempResults.push({
-          thaiName: dish.thaiName || dish.foodName,
-          baseCalories: dish.baseCalories || dish.calories,
-          protein: dish.protein,
-          fat: dish.fat,
-          carbs: dish.carbs,
-          healthNote: dish.healthNote,
-          imagePreview: previews[i]
-        });
+        
+        // 🎯 ✅ แก้ไขตรงนี้: รองรับ Array จาก API (ถ้าส่งรูปโต๊ะจีนมา อาจจะได้กลับมา 5 จาน)
+        if (data.results && Array.isArray(data.results)) {
+          data.results.forEach((item: any) => {
+            const dish = item.thaiDish || item;
+            tempResults.push({
+              logId: item.logId, 
+              thaiName: dish.thaiName || dish.foodName,
+              baseCalories: dish.baseCalories || dish.calories || 0,
+              protein: dish.protein || 0,
+              fat: dish.fat || 0,
+              carbs: dish.carbs || 0,
+              healthNote: dish.healthNote,
+              imagePreview: previews[i] // จานที่หาเจอจากรูปนี้ จะใช้รูปพรีวิวเดียวกัน
+            });
+          });
+        } 
+        // เผื่อ fallback กรณี API เก่าที่ส่งมาแบบเดี่ยวๆ
+        else {
+          const dish = data.thaiDish || data;
+          tempResults.push({
+            logId: data.logId,
+            thaiName: dish.thaiName || dish.foodName,
+            baseCalories: dish.baseCalories || dish.calories || 0,
+            protein: dish.protein || 0,
+            fat: dish.fat || 0,
+            carbs: dish.carbs || 0,
+            healthNote: dish.healthNote,
+            imagePreview: previews[i]
+          });
+        }
       }
       setResults(tempResults);
     } catch (err: any) {
@@ -142,17 +167,32 @@ export default function AnalyzePage() {
   };
 
   const handleSave = async () => {
+    const logIds = results.map(r => r.logId).filter(Boolean);
+    if (logIds.length === 0) return;
+
     setLoading(true);
-    // จำลองการ Fetch ไป API Save
-    setTimeout(() => {
+    try {
+      const res = await fetch("/api/meal-logs", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ logIds, portion, isSaved: true })
+      });
+
+      if (!res.ok) throw new Error("Save failed");
+
+      setShowSaveAlert(true);
+      setTimeout(() => {
+        setShowSaveAlert(false);
+        // เคลียร์หน้าจอหลังจากบันทึกเสร็จ
+        setResults([]);
+        setSelectedImages([]);
+        setPreviews([]);
+      }, 3000);
+    } catch(err: any) {
+      alert(lang === 'th' ? "บันทึกไม่สำเร็จ กรุณาลองใหม่" : "Failed to save. Please try again.");
+    } finally {
       setLoading(false);
-      setShowSaveAlert(true); // 🚨 เด้ง Alert
-      // เคลียร์ข้อมูลหลังบันทึก (เลือกทำตามความเหมาะสม)
-      // setSelectedImages([]); setPreviews([]); setResults([]);
-      
-      // ซ่อน Alert อัตโนมัติหลังจาก 3 วินาที
-      setTimeout(() => setShowSaveAlert(false), 3000);
-    }, 1200);
+    }
   };
 
   const totals = results.reduce((acc, curr) => ({
@@ -197,7 +237,7 @@ export default function AnalyzePage() {
           </div>
           <div>
             <p className="font-black text-xs uppercase tracking-widest">{lang === 'th' ? "บันทึกเรียบร้อย!" : "Saved Successfully!"}</p>
-            <p className="text-[10px] opacity-60 font-bold uppercase">{lang === 'th' ? "ข้อมูลโภชนาการถูกเก็บลงประวัติแล้ว" : "Nutrition log has been updated."}</p>
+            <p className="text-xs opacity-60 font-bold uppercase">{lang === 'th' ? "ข้อมูลโภชนาการถูกเก็บลงประวัติแล้ว" : "Nutrition log has been updated."}</p>
           </div>
           <button onClick={() => setShowSaveAlert(false)} className="ml-auto opacity-40 hover:opacity-100 transition-opacity">
             <X size={16} />
@@ -208,7 +248,7 @@ export default function AnalyzePage() {
       <header className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-black text-slate-900 dark:text-white uppercase italic tracking-tighter">AI Analyzer</h1>
-          <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
+          <p className="text-xs text-gray-500 font-bold uppercase tracking-widest mt-1 flex items-center gap-1">
             <Sparkles size={10} className="text-emerald-500" />{lang === 'th' ? "สแกนเนอร์อัจฉริยะ" : "Smart Scanner"}
           </p>
         </div>
@@ -237,7 +277,7 @@ export default function AnalyzePage() {
             {previews.length === 0 && (
               <div onClick={() => fileInputRef.current?.click()} className="w-full h-32 rounded-[2rem] bg-slate-50 dark:bg-white/[0.02] border-2 border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center cursor-pointer hover:bg-slate-100 dark:hover:bg-white/5 transition-all group">
                 <Upload size={20} className="text-gray-400 mb-2 group-hover:text-emerald-500 transition-colors" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-gray-400">{lang === 'th' ? "คลิกเพื่ออัปโหลด" : "Click to upload"}</span>
+                <span className="text-[12px] font-black uppercase tracking-widest text-gray-400">{lang === 'th' ? "คลิกเพื่ออัปโหลด" : "Click to upload"}</span>
               </div>
             )}
           </div>
@@ -247,7 +287,7 @@ export default function AnalyzePage() {
             <button
               onClick={handleAnalyze}
               disabled={loading}
-              className="w-full py-4 rounded-2xl bg-emerald-500 text-black font-black uppercase tracking-widest text-[11px] shadow-lg active:scale-[0.98] transition-all disabled:opacity-20 flex items-center justify-center gap-2"
+              className="w-full py-4 rounded-2xl bg-emerald-500 text-black font-black uppercase tracking-widest text-base shadow-lg active:scale-[0.98] transition-all disabled:opacity-20 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
               {lang === 'th' ? "เริ่มการวิเคราะห์" : "Start Analysis"}
@@ -261,31 +301,31 @@ export default function AnalyzePage() {
             {loading && (
               <div className="absolute inset-0 bg-white/80 dark:bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center flex-col gap-4">
                 <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin" />
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] text-emerald-600 animate-pulse">AI Processing</p>
+                <p className="text-[12px] font-black uppercase tracking-[0.2em] text-emerald-600 animate-pulse">AI Processing</p>
               </div>
             )}
 
-            <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
+            <h3 className="text-[12px] font-black text-gray-400 uppercase tracking-[0.2em] mb-6 flex items-center gap-2">
               <Info size={12} /> {lang === 'th' ? "โภชนาการที่ตรวจพบ" : "Nutrition Detected"}
             </h3>
 
             {results.length > 0 ? (
               <div className="space-y-6">
-                <div className="space-y-3 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
+                <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
                   {results.map((item, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-white/5 p-3 rounded-2xl flex items-center gap-4 border border-slate-100 dark:border-white/5 animate-in slide-in-from-right duration-300" style={{ animationDelay: `${idx * 100}ms` }}>
-                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm">
+                      <div className="w-12 h-12 rounded-xl overflow-hidden shadow-sm shrink-0">
                         <img src={item.imagePreview} className="w-full h-full object-cover" alt="food" />
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-black text-slate-800 dark:text-white text-[11px] uppercase italic truncate max-w-[120px]">{item.thaiName}</h4>
-                        <div className="flex gap-2 text-[8px] text-gray-500 font-bold uppercase mt-0.5">
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-black text-slate-800 dark:text-white text-base uppercase italic truncate pr-2">{item.thaiName}</h4>
+                        <div className="flex gap-2 text-xs text-gray-500 font-bold uppercase mt-0.5">
                           <span className="flex items-center gap-0.5"><Dna size={8} className="text-blue-500" /> {item.protein}g</span>
                           <span className="flex items-center gap-0.5"><Wheat size={8} className="text-orange-500" /> {item.carbs}g</span>
                           <span className="flex items-center gap-0.5"><Droplets size={8} className="text-yellow-500" /> {item.fat}g</span>
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="text-right shrink-0">
                         <span className="text-emerald-600 dark:text-emerald-400 font-black text-sm">{item.baseCalories}</span>
                         <p className="text-[7px] text-gray-400 font-bold leading-none">KCAL</p>
                       </div>
@@ -293,10 +333,10 @@ export default function AnalyzePage() {
                   ))}
                 </div>
 
-                {/* Portion Picker - เฉพาะเมื่อมี 1 รูป */}
-                {selectedImages.length === 1 && (
+                {/* Portion Picker - ปรับสัดส่วนการกินแบบเหมารวม (เช่น กินโต๊ะจีนนี้แค่ 0.5 ส่วน) */}
+                {selectedImages.length > 0 && (
                   <div className="flex justify-between items-center p-4 bg-slate-100/50 dark:bg-white/5 rounded-3xl">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{lang === 'th' ? "จาน / ส่วน" : "Portions"}</span>
+                    <span className="text-[12px] font-black text-gray-400 uppercase tracking-widest">{lang === 'th' ? "สัดส่วนที่ทาน" : "Portions"}</span>
                     <div className="flex items-center gap-4">
                       <button onClick={() => setPortion(Math.max(0.5, portion - 0.5))} className="w-8 h-8 rounded-full bg-white dark:bg-white/10 flex items-center justify-center shadow-sm hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors">
                         <Minus size={14} className="text-slate-600 dark:text-white" />
@@ -313,7 +353,7 @@ export default function AnalyzePage() {
                 <div className="bg-emerald-500 text-black p-5 rounded-[2.5rem] shadow-xl shadow-emerald-500/20 relative overflow-hidden group">
                   <Zap size={80} className="absolute -right-4 -bottom-4 opacity-10 rotate-12 group-hover:scale-110 transition-transform" />
                   <div className="flex justify-between items-center mb-4 relative z-10">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-70">{lang === 'th' ? "รวมแคลอรี่" : "Total KCAL"}</p>
+                    <p className="text-xs font-black uppercase tracking-widest opacity-70">{lang === 'th' ? "รวมแคลอรี่" : "Total KCAL"}</p>
                     <h2 className="text-4xl font-black italic tracking-tighter">{totals.calories.toFixed(0)}</h2>
                   </div>
                   <div className="grid grid-cols-3 gap-2 pt-4 border-t border-black/10 relative z-10">
@@ -338,7 +378,7 @@ export default function AnalyzePage() {
                 <button 
                   onClick={handleSave}
                   disabled={loading}
-                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-[11px] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black uppercase tracking-widest text-base shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-2"
                 >
                   <ArrowRight size={16} />
                   {lang === 'th' ? "บันทึกลงสมุดสุขภาพ" : "SAVE TO HEALTH LOG"}
@@ -347,7 +387,7 @@ export default function AnalyzePage() {
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center py-16 opacity-30">
                 <Sparkles size={40} className="text-slate-400 mb-4" />
-                <p className="text-[9px] font-black uppercase tracking-[0.2em] max-w-[150px]">
+                <p className="text-[12px] font-black uppercase tracking-[0.2em] max-w-[150px]">
                   {lang === 'th' ? "วิเคราะห์รูปภาพอาหารของคุณเพื่อดูโภชนาการ" : "Analyze your meal for nutrition insights"}
                 </p>
               </div>
@@ -360,7 +400,7 @@ export default function AnalyzePage() {
       {isCameraOpen && (
         <div className="fixed inset-0 z-[400] bg-black flex flex-col animate-in fade-in duration-300">
           <div className="p-6 flex justify-between items-center z-10">
-            <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 italic">Live Lens</span>
+            <span className="text-xs font-black uppercase tracking-widest text-emerald-500 italic">Live Lens</span>
             <button onClick={closeCamera} className="p-3 bg-white/10 rounded-full text-white backdrop-blur-md"><X size={20} /></button>
           </div>
           <div className="flex-1 relative flex items-center justify-center overflow-hidden">

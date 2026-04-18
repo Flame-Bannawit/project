@@ -1,6 +1,6 @@
 "use client";
 
-import "./globals.css";
+import "@/app/globals.css";
 import { useState, useEffect } from "react";
 import { Inter } from "next/font/google";
 import { Menu, X, Home, Camera, History, User, LogOut, LogIn, Activity, Languages, Sun, Moon } from "lucide-react";
@@ -113,7 +113,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
           <div className="hidden md:flex items-center gap-1 p-1 rounded-full border bg-slate-100 dark:bg-white/5 border-slate-200 dark:border-white/5">
             {menuItems.map((item) => (
-              <Link key={item.href} href={item.href} className={`px-5 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${pathname === item.href ? "bg-emerald-500 text-black shadow-lg" : "text-gray-400 hover:text-emerald-500"}`}>
+              <Link key={item.href} href={item.href} className={`px-5 py-2 rounded-full text-xs font-black uppercase tracking-widest transition-all ${pathname === item.href ? "bg-emerald-500 text-black shadow-lg" : "text-gray-400 hover:text-emerald-500"}`}>
                 {item.label}
               </Link>
             ))}
@@ -129,7 +129,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 
             <button 
               onClick={toggleLang}
-              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-[10px] font-black uppercase tracking-tighter transition-all"
+              className="flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-xs font-black uppercase tracking-tighter transition-all"
             >
               <Languages size={14} />
               {lang === 'en' ? "TH" : "EN"}

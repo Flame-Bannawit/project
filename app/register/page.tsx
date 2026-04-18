@@ -15,7 +15,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     email: "",
     password: "",
-    confirmPassword: "", // 🆕 เพิ่มฟิลด์ยืนยันรหัสผ่าน
+    confirmPassword: "", 
     name: "",
     gender: "male",
     birthDate: "",
@@ -30,7 +30,7 @@ export default function RegisterPage() {
   const [mounted, setMounted] = useState(false);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false); // 🆕 เพิ่มสถานะเปิด/ปิดตารหัสยืนยัน
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false); 
   const [msg, setMsg] = useState<{ text: string; type: "success" | "error" } | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -57,7 +57,6 @@ export default function RegisterPage() {
   };
 
   const handleSubmit = async () => {
-    // 🛡️ ตรวจสอบว่ารหัสผ่านตรงกันหรือไม่
     if (form.password !== form.confirmPassword) {
       setMsg({ 
         text: lang === 'th' ? "รหัสผ่านไม่ตรงกัน กรุณาตรวจสอบอีกครั้ง" : "Passwords do not match. Please check again.", 
@@ -96,7 +95,12 @@ export default function RegisterPage() {
         setMsg({ text: data.error || (lang === 'th' ? "สมัครสมาชิกไม่สำเร็จ" : "Registration failed"), type: "error" });
       } else {
         setMsg({ text: lang === 'th' ? "สร้างบัญชีสำเร็จ! ✨" : "Account created successfully! ✨", type: "success" });
-        setTimeout(() => router.push("/analyze"), 1500);
+        
+        // ✅ ฝังคำสั่งว่าเพิ่งสมัครเสร็จให้โชว์ Popup โภชนาการที่หน้าแรก
+        sessionStorage.setItem("show_welcome_popup", "true");
+        
+        // ✅ เปลี่ยนจาก /analyze เป็น / (หน้าหลัก) เพื่อให้โชว์ Popup ได้
+        setTimeout(() => router.push("/"), 1500);
       }
     } catch (err) {
       setMsg({ text: lang === 'th' ? "เกิดข้อผิดพลาดในการเชื่อมต่อ" : "Connection error", type: "error" });
@@ -116,7 +120,7 @@ export default function RegisterPage() {
       <div className="flex items-center justify-between mb-8 mt-5 px-2">
         <Link 
           href="/" 
-          className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-gray-500 hover:text-emerald-500 transition-all group"
+          className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-gray-500 hover:text-emerald-500 transition-all group"
         >
           <div className="p-2 rounded-xl bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 group-hover:border-emerald-500/50 group-hover:bg-emerald-500/10 transition-all">
             <ChevronLeft size={16} />
@@ -133,7 +137,7 @@ export default function RegisterPage() {
           </button>
           <button 
             onClick={toggleLang}
-            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-[10px] font-black uppercase tracking-tighter transition-all"
+            className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/5 text-emerald-600 dark:text-emerald-500 text-xs font-black uppercase tracking-tighter transition-all"
           >
             <Languages size={14} />
             {lang === 'en' ? "TH" : "EN"}
@@ -148,18 +152,17 @@ export default function RegisterPage() {
         <h1 className="text-3xl font-black tracking-tighter uppercase italic text-slate-900 dark:text-white">
           Join <span className="text-emerald-500">Us</span>
         </h1>
-        <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest max-w-[250px] mx-auto opacity-60">
+        <p className="text-gray-500 text-xs font-bold uppercase tracking-widest max-w-[250px] mx-auto opacity-60">
           {lang === 'th' ? "สร้างบัญชีเพื่อเริ่มต้นการดูแลสุขภาพ" : "Create an account for your health journey"}
         </p>
       </div>
 
       <div className="space-y-6 px-2">
         <div className="space-y-3">
-          <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-4">Account Details</p>
+          <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-4">Account Details</p>
           <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-6 space-y-4 shadow-xl backdrop-blur-md">
             <RegisterInput icon={<Mail size={18}/>} name="email" type="email" placeholder="Email Address" value={form.email} onChange={handleChange} />
             
-            {/* Password Field */}
             <div className="relative group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
                 <Lock size={18}/>
@@ -181,7 +184,6 @@ export default function RegisterPage() {
               </button>
             </div>
 
-            {/* 🆕 Confirm Password Field */}
             <div className="relative group">
               <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
                 <Lock size={18}/>
@@ -211,11 +213,11 @@ export default function RegisterPage() {
         </div>
 
         <div className="space-y-3">
-          <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-4">Body Metrics</p>
+          <p className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-4">Body Metrics</p>
           <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-[2.5rem] p-6 space-y-4 shadow-xl backdrop-blur-md">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Gender</label>
+                <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Gender</label>
                 <select 
                   name="gender" 
                   value={form.gender} 
@@ -227,7 +229,7 @@ export default function RegisterPage() {
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Birth Date</label>
+                <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Birth Date</label>
                 <input 
                   type="date" 
                   name="birthDate" 
@@ -245,7 +247,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Activity Level</label>
+              <label className="text-xs font-black text-gray-400 dark:text-gray-500 uppercase ml-4">Activity Level</label>
               <div className="relative group">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-emerald-500/50 group-focus-within:text-emerald-500 transition-colors pointer-events-none">
                   <Activity size={18}/>
@@ -268,7 +270,7 @@ export default function RegisterPage() {
         </div>
 
         {msg && (
-          <div className={`p-4 rounded-2xl text-[10px] font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2 ${msg.type === "success" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20"}`}>
+          <div className={`p-4 rounded-2xl text-xs font-black uppercase tracking-widest animate-in fade-in slide-in-from-top-2 ${msg.type === "success" ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20" : "bg-red-500/10 text-red-500 dark:text-red-400 border border-red-500/20"}`}>
             <div className="flex items-center justify-center gap-2">
               <Sparkles size={14} className={msg.type === "success" ? "animate-pulse" : ""} />
               {msg.text}
@@ -287,7 +289,7 @@ export default function RegisterPage() {
             {!loading && <ChevronRight size={18} className="group-hover:translate-x-1 transition-transform" />}
           </button>
 
-          <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center font-bold uppercase tracking-widest">
+          <p className="text-xs text-gray-400 dark:text-gray-500 text-center font-bold uppercase tracking-widest">
             {lang === 'th' ? "มีบัญชีอยู่แล้ว?" : "Already have an account?"}{" "}
             <Link href="/login" className="text-emerald-600 dark:text-emerald-500 hover:text-emerald-400 transition-colors underline underline-offset-8">
               {lang === 'th' ? "เข้าสู่ระบบ" : "Sign In"}

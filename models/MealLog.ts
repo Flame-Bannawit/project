@@ -24,6 +24,9 @@ const MealLogSchema = new mongoose.Schema(
     // 🆕 เพิ่มเปอร์เซ็นต์ที่เหลือ (0 = กินหมด, 100 = ไม่กินเลย)
     remainingPercent: { type: Number, default: 0 },
 
+    // 🆕 สถานะการบันทึก (false = แค่วิเคราะห์, true = บันทึกกินจริง)
+    isSaved: { type: Boolean, default: false },
+
     // ผลจาก AI และ Mapping
     aiLabel: String,
     thaiDish: {
@@ -35,7 +38,7 @@ const MealLogSchema = new mongoose.Schema(
       carbs: Number,
       healthNote: String,
       
-      // 🆕 ฟิลด์เก็บค่าต้นฉบับ 100% จาก AI (ห้ามแก้ไขฟิลด์เหล่านี้หลังบันทึก)
+      // ฟิลด์เก็บค่าต้นฉบับ 100% จาก AI (ห้ามแก้ไขฟิลด์เหล่านี้หลังบันทึก)
       originalCalories: Number,
       originalProtein: Number,
       originalFat: Number,

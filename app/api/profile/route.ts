@@ -3,7 +3,7 @@ import { connectDB } from "@/lib/mongoose";
 import User from "@/models/User";
 import getCurrentUser from "@/lib/auth";
 
-// ✅ ฟังก์ชันคำนวณสุขภาพที่แม่นยำ (Mifflin-St Jeor)
+// ✅ ฟังก์ชันคำนวณสุขภาพที่สัมพันธ์กับ Goal
 function calculateHealth(user: any) {
   // 1. คำนวณอายุ (Age)
   const birth = new Date(user.birthDate);
@@ -13,27 +13,24 @@ function calculateHealth(user: any) {
   if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
     age--;
   }
-  
-  // ป้องกันค่าอายุผิดพลาด (เช่น ใส่ปี พ.ศ.)
   if (age < 10 || age > 100) age = 25;
 
-  // 2. คำนวณ BMR
-  // สูตร: (10 * weight) + (6.25 * height) - (5 * age) + s (male: +5, female: -161)
+  // 2. คำนวณ BMR (Mifflin-St Jeor)
   let bmr = (10 * user.weightKg) + (6.25 * user.heightCm) - (5 * age);
   bmr = user.gender === "male" ? bmr + 5 : bmr - 161;
 
-  // 3. ตรวจสอบ Activity Level (ตัวคูณ TDEE)
-  // หาก activityLevel ส่งมาเป็น 1, 2, 3... ให้แปลงเป็นตัวคูณมาตรฐาน
+  // 3. Activity Factor
   let factor = Number(user.activityLevel);
-  if (factor === 1) factor = 1.2;
-  else if (factor === 2) factor = 1.375;
-  else if (factor === 3) factor = 1.55;
-  else if (factor === 4) factor = 1.725;
-  else if (factor === 5) factor = 1.9;
-  // ถ้าส่งมาเป็นตัวคูณอยู่แล้ว (เช่น 1.2) ให้ใช้ค่านั้นเลย
+  // Map ค่ากรณีส่งมาเป็นลำดับ 1-5
+  const factors: any = { 1: 1.2, 2: 1.375, 3: 1.55, 4: 1.725, 5: 1.9 };
+  if (factors[factor]) factor = factors[factor];
   else if (factor < 1) factor = 1.2; 
 
-  const tdee = Math.round(bmr * factor);
+  let tdee = Math.round(bmr * factor);
+
+  // 🎯 4. ปรับ TDEE ตามเป้าหมาย (Goal)
+  if (user.goal === 'weight_loss') tdee -= 500;
+  else if (user.goal === 'muscle_gain') tdee += 300;
 
   return { tdee };
 }
@@ -47,7 +44,6 @@ export async function GET() {
     const user = await User.findById(authUser._id || authUser.id);
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-    // ✅ ส่งออกแบบ Flat ตามที่หน้า ProfilePage ต้องการ
     return NextResponse.json({
       profile: {
         id: user._id,
@@ -58,6 +54,7 @@ export async function GET() {
         heightCm: user.heightCm,
         weightKg: user.weightKg,
         activityLevel: user.activityLevel,
+        goal: user.goal || 'none', // ✅ ส่งเป้าหมายออกไปให้หน้าบ้าน
         dailyCalorieGoal: user.dailyCalorieGoal || 2000,
         proteinGoal: user.proteinGoal || 0,
         fatGoal: user.fatGoal || 0,
@@ -81,25 +78,60 @@ export async function PUT(req: NextRequest) {
     if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
     // อัปเดตข้อมูลเบื้องต้น
-    user.name = body.name || user.name;
-    user.gender = body.gender || user.gender;
-    user.birthDate = body.birthDate ? new Date(body.birthDate) : user.birthDate;
-    user.heightCm = Number(body.heightCm) || user.heightCm;
-    user.weightKg = Number(body.weightKg) || user.weightKg;
-    user.activityLevel = Number(body.activityLevel) || user.activityLevel;
-
-    // ✅ คำนวณ kcal และสารอาหารใหม่ทันที
-    const { tdee } = calculateHealth(user);
+    if (body.name) user.name = body.name;
+    if (body.gender) user.gender = body.gender;
+    if (body.birthDate) user.birthDate = new Date(body.birthDate);
+    if (body.heightCm) user.heightCm = Number(body.heightCm);
+    if (body.weightKg) user.weightKg = Number(body.weightKg);
+    if (body.activityLevel) user.activityLevel = Number(body.activityLevel);
     
-    user.dailyCalorieGoal = tdee;
-    user.proteinGoal = Math.round((tdee * 0.30) / 4); // Protein 30%
-    user.fatGoal = Math.round((tdee * 0.25) / 9);     // Fat 25%
-    user.carbsGoal = Math.round((tdee * 0.45) / 4);    // Carbs 45%
+    // ✅ รับค่า Goal ถ้าหน้าบ้านส่งมา
+    if (body.goal) user.goal = body.goal;
 
-    await user.save();
+    // 🔄 คำนวณ kcal ใหม่ตามเป้าหมาย
+    const { tdee } = calculateHealth(user);
+    user.dailyCalorieGoal = tdee;
+
+    // 🥩 ปรับสารอาหารตามเป้าหมาย (Macros Logic)
+    if (user.goal === 'muscle_gain') {
+      user.proteinGoal = Math.round((tdee * 0.35) / 4);
+      user.fatGoal = Math.round((tdee * 0.25) / 9);
+      user.carbsGoal = Math.round((tdee * 0.40) / 4);
+    } else if (user.goal === 'weight_loss') {
+      user.proteinGoal = Math.round((tdee * 0.40) / 4);
+      user.fatGoal = Math.round((tdee * 0.25) / 9);
+      user.carbsGoal = Math.round((tdee * 0.35) / 4);
+    } else {
+      user.proteinGoal = Math.round((tdee * 0.30) / 4);
+      user.fatGoal = Math.round((tdee * 0.30) / 9);
+      user.carbsGoal = Math.round((tdee * 0.40) / 4);
+    }
+
+    // 🔥 เปลี่ยนมาใช้ updateOne บังคับบันทึกลง Database ตรงๆ ทะลุกำแพง Cache!
+    await User.updateOne({ _id: user._id }, {
+      $set: {
+        name: user.name,
+        gender: user.gender,
+        birthDate: user.birthDate,
+        heightCm: user.heightCm,
+        weightKg: user.weightKg,
+        activityLevel: user.activityLevel,
+        goal: user.goal,
+        dailyCalorieGoal: user.dailyCalorieGoal,
+        proteinGoal: user.proteinGoal,
+        fatGoal: user.fatGoal,
+        carbsGoal: user.carbsGoal
+      }
+    });
 
     return NextResponse.json({ ok: true, profile: user });
   } catch (err) {
+    console.error("PUT Profile Error:", err);
     return NextResponse.json({ error: "Update Failed" }, { status: 500 });
   }
+}
+
+// ✅ เพิ่ม PATCH เพื่อรองรับการยิงจาก Dashboard (เผื่อไว้)
+export async function PATCH(req: NextRequest) {
+  return PUT(req);
 }
