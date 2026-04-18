@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { 
   Camera, History, User, Flame, Target, ChevronRight, Activity, 
   Sparkles, Loader2, TrendingUp, BarChart3, LineChart as LineChartIcon, 
@@ -24,19 +24,16 @@ export default function HomePage() {
   const [dict, setDict] = useState<any>(null);
   const [lang, setLang] = useState<'en' | 'th'>('th');
 
-  // 💡 Smart Tips State
   const [showTipModal, setShowTipModal] = useState(false);
   const [modalView, setModalView] = useState<'select' | 'loading' | 'advice'>('select');
   const [activeTip, setActiveTip] = useState<any>({ short: "", diet: "", workout: "", cardio: "", icon: "💡" });
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [showFloatingTip, setShowFloatingTip] = useState(true);
 
-  // ⚖️ Popups State
   const [showBmiPopup, setShowBmiPopup] = useState(false);
   const [showWelcomeAuth, setShowWelcomeAuth] = useState(false);
   const [welcomeData, setWelcomeData] = useState<any>(null);
 
-  // 🧠 Logic วิเคราะห์คำแนะนำ (สำหรับปุ่มหลอดไฟ)
   const generateSmartTip = useCallback((profile: any, eaten: number, currentLang: string) => {
     const target = profile?.dailyCalorieGoal || 2000;
     const userGoal = profile?.goal || 'none';
@@ -131,7 +128,6 @@ export default function HomePage() {
         (log.loggedAt || log.createdAt).startsWith(todayStr)
       );
 
-      // ✅ แก้ไข: บวกแคลอรี่เฉพาะมื้อที่ isSaved === true เท่านั้น
       const totals = todaysLogs
         .filter((log: any) => log.isSaved === true)
         .reduce((acc: any, log: any) => ({
@@ -149,11 +145,9 @@ export default function HomePage() {
 
       setActiveTip(generateSmartTip(userProfile, totals.cal, currentLang));
 
-      // ✅ ตรวจสอบว่าเพิ่ง Login/Register เข้ามาใช่ไหม?
       const isNewAuth = sessionStorage.getItem("show_welcome_popup") === "true";
       
       if (isNewAuth && userProfile.weightKg && userProfile.heightCm) {
-        // คำนวณข้อมูลสำหรับ Popup ใหม่
         const bmi = userProfile.weightKg / ((userProfile.heightCm / 100) ** 2);
         let status = "", dietRec = "", workRec = "", sg = "";
         
@@ -176,9 +170,8 @@ export default function HomePage() {
 
         setWelcomeData({ bmi: bmi.toFixed(1), status, dietRec, workRec, tdee: userProfile.dailyCalorieGoal, sg });
         setShowWelcomeAuth(true);
-        sessionStorage.removeItem("show_welcome_popup"); // 🗑️ ลบทิ้ง จะได้ไม่เด้งตอนรีเฟรชหน้า
+        sessionStorage.removeItem("show_welcome_popup");
       } 
-      // ✅ ถ้าไม่ได้เพิ่ง Login ให้เช็คว่าไม่มี Goal ไหม (Popup เตือนปกติ)
       else if (!userProfile.goal || userProfile.goal === 'none') {
         const hasSeenPopup = sessionStorage.getItem('bmi_popup_seen');
         if (!hasSeenPopup) {
@@ -302,172 +295,183 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-transparent pb-32">
-      <main className="p-5 max-w-xl mx-auto space-y-6">
+      {/* 🎯 ขยาย Container เป็น max-w-7xl สำหรับ Desktop */}
+      <main className="p-4 md:p-8 max-w-7xl mx-auto space-y-8">
         
-        <header className="px-1 pt-4">
+        {/* HEADER */}
+        <header className="px-2 pt-2 md:pt-4">
             <div className="flex items-center justify-between mb-4">
-              <div className="inline-flex items-center gap-2 text-base px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-emerald-600 font-black uppercase tracking-widest">
-                <Sparkles size={12} className="animate-pulse" /> {lang === 'th' ? "โภชนาการ AI" : "AI Insights"}
+              <div className="inline-flex items-center gap-2 text-sm px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-400/20 text-emerald-600 font-black uppercase tracking-widest shadow-sm">
+                <Sparkles size={14} className="animate-pulse" /> {lang === 'th' ? "โภชนาการ AI" : "AI Insights"}
               </div>
-              <p className="text-[12px] font-bold text-gray-500">
+              <p className="text-sm font-bold text-gray-500">
                 {lang === 'th' ? "ยินดีต้อนรับ, " : "Welcome, "}
-                <span className="text-emerald-500 text-sm">
+                <span className="text-emerald-500 text-base">
                   {data?.profile?.name?.split(' ')[0] || (lang === 'th' ? "ผู้ใช้" : "User")}
                 </span>
               </p>
             </div>
-            <h1 className="text-5xl font-black leading-none uppercase tracking-tighter italic text-slate-900 dark:text-white">Healthy<span className="text-emerald-500 underline decoration-emerald-500/30 underline-offset-4">Mate</span></h1>
+            <h1 className="text-5xl md:text-6xl font-black leading-none uppercase tracking-tighter italic text-slate-900 dark:text-white">
+              Healthy<span className="text-emerald-500 underline decoration-emerald-500/30 underline-offset-4">Mate</span>
+            </h1>
         </header>
 
-        {/* 📊 TRENDS SECTION */}
-        <section className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] p-6 space-y-6 shadow-xl relative animate-in fade-in duration-1000">
-          <div className="flex justify-between items-start px-1">
-            <div>
-              <h4 className="text-xs font-black uppercase tracking-[0.3em] text-gray-400 mb-1 flex items-center gap-2"><Activity size={12} className="text-emerald-500" /> {lang === 'th' ? "สถิติสุขภาพ" : "Health Stats"}</h4>
-              <h3 className="text-xl font-black italic uppercase tracking-tighter text-slate-800 dark:text-white">{chartType === "calories" ? (lang === 'th' ? "แนวโน้มแคลอรี่" : "Calorie Trends") : (lang === 'th' ? "แนวโน้มสารอาหาร" : "Macro Trends")}</h3>
-            </div>
-            <div className="flex bg-slate-100 dark:bg-black/40 p-1 rounded-2xl border border-slate-200 dark:border-white/5">
-              <button onClick={() => setChartType("calories")} className={`p-2 rounded-xl transition-all ${chartType === "calories" ? "bg-white dark:bg-white/10 text-emerald-500 shadow-sm" : "text-gray-400"}`}><LineChartIcon size={16} /></button>
-              <button onClick={() => setChartType("macros")} className={`p-2 rounded-xl transition-all ${chartType === "macros" ? "bg-white dark:bg-white/10 text-emerald-500 shadow-sm" : "text-gray-400"}`}><BarChart3 size={16} /></button>
-            </div>
-          </div>
-          <div className="h-64 w-full pr-2">
-            <ResponsiveContainer width="100%" height="100%">
-              {chartType === "calories" ? (
-                <AreaChart data={filteredTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs><linearGradient id="colorCal" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
-                  <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} dy={10} />
-                  <YAxis domain={[0, (dataMax: any) => Math.max(dataMax, goal + 500)]} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 800 }} />
-                  <ReferenceLine y={goal} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'right', value: 'GOAL', fill: '#ef4444', fontSize: 10, fontWeight: 900 }} />
-                  <Area type="monotone" dataKey="calories" stroke="#10b981" strokeWidth={4} fill="url(#colorCal)" animationDuration={2000} />
-                </AreaChart>
-              ) : (
-                <BarChart data={filteredTrendData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
-                  <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 900}} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '11px', fontWeight: 800 }} />
-                  <Bar dataKey="protein" stackId="a" fill="#3b82f6" barSize={14} /><Bar dataKey="carbs" stackId="a" fill="#f59e0b" /><Bar dataKey="fat" stackId="a" fill="#f43f5e" radius={[6, 6, 0, 0]} />
-                </BarChart>
-              )}
-            </ResponsiveContainer>
-          </div>
-          <div className="flex justify-center gap-4">
-            {[7, 30].map((range) => (
-              <button key={range} onClick={() => setTimeRange(range)} className={`px-6 py-2.5 rounded-2xl text-base font-black uppercase tracking-widest transition-all ${timeRange === range ? "bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg" : "text-gray-400 bg-slate-100 dark:bg-white/5"}`}>{range} Days</button>
-            ))}
-          </div>
-        </section>
-
-        {/* 🟢 PROGRESS CARD */}
-        <section className="bg-emerald-500 rounded-[3rem] p-8 shadow-2xl relative overflow-hidden group">
-          <div className="flex justify-between items-start relative z-20">
-             <div className="space-y-1 pt-2">
-                <p className="text-base font-black uppercase tracking-[0.2em] text-black/50">{lang === 'th' ? "วันนี้ทานได้อีก" : "KCAL Remaining"}</p>
-             </div>
-             <div className="flex items-center gap-3">
-               <div className={`relative bg-black/90 backdrop-blur-md text-xs font-black text-white px-3 py-2 rounded-xl uppercase tracking-tighter shadow-xl border border-white/5 whitespace-nowrap flex items-center transition-all duration-1000 ${showFloatingTip ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}`}>
-                 {activeTip.short}
-                 <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-2 h-2 bg-black/90 rotate-45" />
-               </div>
-               <button onClick={openModal} className="bg-black/10 hover:bg-black/20 p-3.5 rounded-2xl transition-all border border-black/5 shadow-inner active:scale-90 relative shrink-0 group/btn">
-                 <Lightbulb size={22} className="text-black group-hover/btn:rotate-12 transition-transform" />
-                 <div className="absolute inset-0 bg-yellow-400/30 blur-xl animate-pulse -z-10 rounded-full" />
-               </button>
-             </div>
-          </div>
-          <div className="absolute -right-10 -bottom-10 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-1000"><Zap size={280} fill="black" /></div>
+        {/* 🎯 DESKTOP GRID SYSTEM (แบ่ง 2 คอลัมน์บนจอใหญ่) */}
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 xl:gap-8 items-start">
           
-          <div className="relative z-10 flex justify-between items-end mt-2">
-             <div className="space-y-1">
-                <h3 className="text-7xl font-black tracking-tighter text-black italic leading-none">{Math.round(remaining)}</h3>
-             </div>
-             <div className="text-right">
-                <p className="text-base font-black uppercase tracking-[0.2em] text-black/50 mb-1.5">{lang === 'th' ? "จากเป้าหมาย" : "Daily Goal"}</p>
-                <div className="px-4 py-2.5 bg-black/10 rounded-2xl border border-black/10 inline-block font-black text-black leading-none text-lg">{goal}</div>
-             </div>
+          {/* 🟢 LEFT COLUMN (Progress + Trends) */}
+          <div className="xl:col-span-8 space-y-6 xl:space-y-8">
+            
+            {/* PROGRESS CARD */}
+            <section className="bg-emerald-500 rounded-[3rem] p-8 md:p-12 shadow-2xl relative overflow-hidden group hover:shadow-emerald-500/20 transition-all duration-500">
+              <div className="flex justify-between items-start relative z-20">
+                 <div className="space-y-1 pt-2">
+                    <p className="text-base md:text-lg font-black uppercase tracking-[0.2em] text-black/50">{lang === 'th' ? "วันนี้ทานได้อีก" : "KCAL Remaining"}</p>
+                 </div>
+                 <div className="flex items-center gap-3">
+                   <div className={`relative bg-black/90 backdrop-blur-md text-xs md:text-sm font-black text-white px-4 py-2.5 rounded-2xl uppercase tracking-tighter shadow-xl border border-white/5 whitespace-nowrap flex items-center transition-all duration-1000 ${showFloatingTip ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2 pointer-events-none'}`}>
+                     {activeTip.short}
+                     <div className="absolute top-1/2 -right-1 -translate-y-1/2 w-3 h-3 bg-black/90 rotate-45" />
+                   </div>
+                   <button onClick={openModal} className="bg-black/10 hover:bg-black/20 p-4 rounded-2xl transition-all border border-black/5 shadow-inner active:scale-90 relative shrink-0 group/btn hover:scale-105">
+                     <Lightbulb size={24} className="text-black group-hover/btn:rotate-12 transition-transform" />
+                     <div className="absolute inset-0 bg-yellow-400/30 blur-xl animate-pulse -z-10 rounded-full" />
+                   </button>
+                 </div>
+              </div>
+              <div className="absolute -right-10 -bottom-10 opacity-10 rotate-12 group-hover:rotate-0 transition-transform duration-1000"><Zap size={320} fill="black" /></div>
+              
+              <div className="relative z-10 flex flex-col md:flex-row md:justify-between md:items-end mt-4 md:mt-8 gap-4">
+                 <div className="space-y-1">
+                    <h3 className="text-7xl md:text-8xl font-black tracking-tighter text-black italic leading-none">{Math.round(remaining)}</h3>
+                 </div>
+                 <div className="text-left md:text-right">
+                    <p className="text-sm font-black uppercase tracking-[0.2em] text-black/50 mb-2">{lang === 'th' ? "จากเป้าหมาย" : "Daily Goal"}</p>
+                    <div className="px-5 py-3 bg-black/10 rounded-2xl border border-black/10 inline-block font-black text-black leading-none text-xl">{goal}</div>
+                 </div>
+              </div>
+
+              <div className="mt-8 md:mt-12 space-y-4 relative z-10">
+                 <div className="w-full bg-black/10 h-5 md:h-6 rounded-full p-1 border border-black/5 overflow-hidden">
+                   <div className="bg-black h-full rounded-full transition-all duration-1000 ease-out" style={{ width: `${progress}%` }} />
+                 </div>
+                 <div className="flex justify-between items-center text-black">
+                    <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-black animate-pulse" /><span className="text-base font-black uppercase tracking-widest opacity-80">{Math.round(eaten)} kcal</span></div>
+                    <span className="text-sm font-black italic">{Math.round(progress)}% COMPLETED</span>
+                 </div>
+              </div>
+            </section>
+
+            {/* TRENDS SECTION */}
+            <section className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-[3rem] p-6 md:p-10 shadow-xl relative animate-in fade-in duration-1000 hover:shadow-2xl transition-shadow">
+              <div className="flex justify-between items-start px-1 mb-8">
+                <div>
+                  <h4 className="text-xs md:text-sm font-black uppercase tracking-[0.3em] text-gray-400 mb-2 flex items-center gap-2"><Activity size={16} className="text-emerald-500" /> {lang === 'th' ? "สถิติสุขภาพ" : "Health Stats"}</h4>
+                  <h3 className="text-2xl md:text-3xl font-black italic uppercase tracking-tighter text-slate-800 dark:text-white">{chartType === "calories" ? (lang === 'th' ? "แนวโน้มแคลอรี่" : "Calorie Trends") : (lang === 'th' ? "แนวโน้มสารอาหาร" : "Macro Trends")}</h3>
+                </div>
+                <div className="flex bg-slate-100 dark:bg-black/40 p-1.5 rounded-2xl border border-slate-200 dark:border-white/5">
+                  <button onClick={() => setChartType("calories")} className={`p-3 rounded-xl transition-all ${chartType === "calories" ? "bg-white dark:bg-white/10 text-emerald-500 shadow-sm" : "text-gray-400 hover:text-emerald-500"}`}><LineChartIcon size={20} /></button>
+                  <button onClick={() => setChartType("macros")} className={`p-3 rounded-xl transition-all ${chartType === "macros" ? "bg-white dark:bg-white/10 text-emerald-500 shadow-sm" : "text-gray-400 hover:text-emerald-500"}`}><BarChart3 size={20} /></button>
+                </div>
+              </div>
+              <div className="h-72 md:h-[400px] w-full ml-[-15px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  {chartType === "calories" ? (
+                    <AreaChart data={filteredTrendData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                      <defs><linearGradient id="colorCal" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.4}/><stop offset="95%" stopColor="#10b981" stopOpacity={0}/></linearGradient></defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
+                      <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} dy={15} />
+                      <YAxis domain={[0, (dataMax: any) => Math.max(dataMax, goal + 500)]} axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '12px', fontWeight: 800, padding: '12px' }} />
+                      <ReferenceLine y={goal} stroke="#ef4444" strokeDasharray="5 5" label={{ position: 'top', value: 'GOAL', fill: '#ef4444', fontSize: 12, fontWeight: 900 }} />
+                      <Area type="monotone" dataKey="calories" stroke="#10b981" strokeWidth={5} fill="url(#colorCal)" animationDuration={1500} />
+                    </AreaChart>
+                  ) : (
+                    <BarChart data={filteredTrendData} margin={{ top: 20, right: 10, left: 0, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" className="text-slate-100 dark:text-white/5" />
+                      <XAxis dataKey="displayDate" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} dy={15} />
+                      <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 12, fontWeight: 900}} />
+                      <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: 'none', borderRadius: '16px', color: '#fff', fontSize: '12px', fontWeight: 800, padding: '12px' }} />
+                      <Bar dataKey="protein" stackId="a" fill="#3b82f6" barSize={16} /><Bar dataKey="carbs" stackId="a" fill="#f59e0b" /><Bar dataKey="fat" stackId="a" fill="#f43f5e" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  )}
+                </ResponsiveContainer>
+              </div>
+              <div className="flex justify-center gap-4 mt-8">
+                {[7, 30].map((range) => (
+                  <button key={range} onClick={() => setTimeRange(range)} className={`px-8 py-3 rounded-2xl text-sm font-black uppercase tracking-widest transition-all ${timeRange === range ? "bg-slate-900 dark:bg-white text-white dark:text-black shadow-lg scale-105" : "text-gray-400 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10"}`}>{range} Days</button>
+                ))}
+              </div>
+            </section>
           </div>
 
-          <div className="mt-8 space-y-4 relative z-10">
-             <div className="w-full bg-black/10 h-4 rounded-full p-1 border border-black/5 overflow-hidden"><div className="bg-black h-full rounded-full transition-all duration-1000" style={{ width: `${progress}%` }} /></div>
-             <div className="flex justify-between items-center text-black">
-                <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-black animate-pulse" /><span className="text-base font-black uppercase tracking-widest opacity-80">{Math.round(eaten)} kcal</span></div>
-                <span className="text-xs font-black italic">{Math.round(progress)}% COMPLETED</span>
-             </div>
-          </div>
-        </section>
+          {/* 🟢 RIGHT COLUMN (Macros + Actions) */}
+          <div className="xl:col-span-4 space-y-6 xl:space-y-8 flex flex-col">
+            
+            {/* MACRO GRID: 3 Columns on Tablet, 1 Column on Desktop/Mobile */}
+            <div className="grid grid-cols-1 md:grid-cols-3 xl:grid-cols-1 gap-4 lg:gap-6">
+              <MacroCard label={lang === 'th' ? "โปรตีน" : "Protein"} val={data?.macrosToday.p} goal={data?.profile?.proteinGoal || 150} color="bg-blue-500/10 dark:bg-blue-500/20" border="border-blue-500/20" text="text-blue-600 dark:text-blue-400" icon={<Activity size={24}/>} />
+              <MacroCard label={lang === 'th' ? "คาร์บ" : "Carbs"} val={data?.macrosToday.c} goal={data?.profile?.carbsGoal || 250} color="bg-amber-500/10 dark:bg-amber-500/20" border="border-amber-500/20" text="text-amber-600 dark:text-amber-400" icon={<TrendingUp size={24}/>} />
+              <MacroCard label={lang === 'th' ? "ไขมัน" : "Fat"} val={data?.macrosToday.f} goal={data?.profile?.fatGoal || 70} color="bg-rose-500/10 dark:bg-rose-500/20" border="border-rose-500/20" text="text-rose-600 dark:text-rose-400" icon={<Zap size={24}/>} />
+            </div>
 
-        {/* 🟢 MACRO GRID */}
-        <div className="grid grid-cols-3 gap-4">
-          <MacroCard label={lang === 'th' ? "โปรตีน" : "Protein"} val={data?.macrosToday.p} goal={data?.profile?.proteinGoal || 150} color="bg-blue-500/10 dark:bg-blue-500/20" border="border-blue-500/20" text="text-blue-600 dark:text-blue-400" icon={<Activity size={16}/>} />
-          <MacroCard label={lang === 'th' ? "คาร์บ" : "Carbs"} val={data?.macrosToday.c} goal={data?.profile?.carbsGoal || 250} color="bg-amber-500/10 dark:bg-amber-500/20" border="border-amber-500/20" text="text-amber-600 dark:text-amber-400" icon={<TrendingUp size={16}/>} />
-          <MacroCard label={lang === 'th' ? "ไขมัน" : "Fat"} val={data?.macrosToday.f} goal={data?.profile?.fatGoal || 70} color="bg-rose-500/10 dark:bg-rose-500/20" border="border-rose-500/20" text="text-rose-600 dark:text-rose-400" icon={<Zap size={16}/>} />
+            {/* QUICK ACTIONS */}
+            <section className="bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 p-6 md:p-8 rounded-[3rem] shadow-xl flex-1 flex flex-col">
+              <h4 className="text-sm font-black uppercase tracking-[0.4em] text-gray-400 mb-6 flex items-center gap-2">
+                <Target size={18} className="text-emerald-500" /> {lang === 'th' ? "เมนูทางลัด" : "Quick Actions"}
+              </h4>
+              <div className="flex flex-col gap-4 flex-1 justify-center">
+                <FeatureLink href="/analyze" title={lang === 'th' ? "วิเคราะห์มื้ออาหาร" : "Analyze Meal"} desc={lang === 'th' ? "สแกนแคลอรี่ด้วย AI" : "AI calorie scanning"} icon={<Camera size={28} />} color="emerald" />
+                <FeatureLink href="/history" title={lang === 'th' ? "ประวัติการทาน" : "Meal History"} desc={lang === 'th' ? "ตรวจสอบรายการบันทึก" : "Review past records"} icon={<History size={28} />} color="sky" />
+                <FeatureLink href="/profile" title={lang === 'th' ? "ร่างกายและเป้าหมาย" : "Body & Goals"} desc={lang === 'th' ? "ปรับแต่งค่าส่วนตัว" : "Adjust your setup"} icon={<User size={28} />} color="violet" />
+              </div>
+            </section>
+
+          </div>
         </div>
 
-        {/* 🟢 QUICK ACTIONS */}
-        <section className="space-y-4 pt-2 pb-10">
-          <h4 className="text-base font-black uppercase tracking-[0.4em] text-gray-400 px-2">{lang === 'th' ? "เมนูทางลัด" : "Quick Actions"}</h4>
-          <div className="grid gap-3">
-            <FeatureLink href="/analyze" title={lang === 'th' ? "วิเคราะห์มื้ออาหาร" : "Analyze Meal"} desc={lang === 'th' ? "ใช้ AI สแกนแคลอรี่จากรูปภาพ" : "AI calorie scanning"} icon={<Camera size={24} />} color="emerald" />
-            <FeatureLink href="/history" title={lang === 'th' ? "ประวัติการทาน" : "Meal History"} desc={lang === 'th' ? "ตรวจสอบรายการบันทึก" : "Review past records"} icon={<History size={24} />} color="sky" />
-            <FeatureLink href="/profile" title={lang === 'th' ? "ร่างกายและเป้าหมาย" : "Body & Goals"} desc={lang === 'th' ? "ปรับแต่งค่า BMI และแคลอรี่" : "Adjust your setup"} icon={<User size={24} />} color="violet" />
-          </div>
-        </section>
-
-        {/* 🚀 WELCOME AUTH POPUP (เพิ่ง Login/Register เข้ามา) */}
+        {/* 🚀 WELCOME AUTH POPUP */}
         {showWelcomeAuth && welcomeData && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-xl animate-in fade-in duration-300" />
-            <div className="relative w-full max-w-md bg-white dark:bg-[#0d0d0d] border border-emerald-500/30 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
-              <div className="bg-emerald-500 p-8 text-center relative">
-                <button onClick={() => setShowWelcomeAuth(false)} className="absolute top-6 right-6 text-black/40 hover:text-black transition-colors"><X size={24} /></button>
-                <div className="text-5xl mb-4 drop-shadow-lg animate-bounce">🎉</div>
-                
-                {/* ✅ โชว์ชื่อผู้ใช้ตรงนี้ด้วย */}
-                <h3 className="text-2xl font-black italic uppercase text-black leading-none">
-                  {lang === 'th' 
-                    ? `ยินดีต้อนรับ, ${data?.profile?.name?.split(' ')[0]}!` 
-                    : `Welcome, ${data?.profile?.name?.split(' ')[0]}!`}
+            <div className="relative w-full max-w-xl bg-white dark:bg-[#0d0d0d] border border-emerald-500/30 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
+              <div className="bg-emerald-500 p-10 text-center relative">
+                <button onClick={() => setShowWelcomeAuth(false)} className="absolute top-6 right-6 text-black/40 hover:text-black transition-colors"><X size={28} /></button>
+                <div className="text-6xl mb-6 drop-shadow-lg animate-bounce">🎉</div>
+                <h3 className="text-3xl font-black italic uppercase text-black leading-none">
+                  {lang === 'th' ? `ยินดีต้อนรับ, ${data?.profile?.name?.split(' ')[0]}!` : `Welcome, ${data?.profile?.name?.split(' ')[0]}!`}
                 </h3>
-                
               </div>
-              <div className="p-8 space-y-6">
-                
-                {/* ข้อมูลร่างกาย */}
-                <div className="flex justify-between items-center bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-200 dark:border-white/10">
+              <div className="p-8 md:p-10 space-y-8">
+                {/* Body Stats */}
+                <div className="flex justify-between items-center bg-slate-50 dark:bg-white/5 p-6 rounded-3xl border border-slate-200 dark:border-white/10">
                   <div className="text-center w-full border-r border-slate-200 dark:border-white/10">
-                    <p className="text-xs text-gray-400 font-black uppercase tracking-widest">BMI</p>
-                    <p className="text-xl font-black text-slate-800 dark:text-white">{welcomeData.bmi}</p>
+                    <p className="text-sm text-gray-400 font-black uppercase tracking-widest mb-1">BMI</p>
+                    <p className="text-3xl font-black text-slate-800 dark:text-white">{welcomeData.bmi}</p>
                   </div>
                   <div className="text-center w-full">
-                    <p className="text-xs text-gray-400 font-black uppercase tracking-widest">TDEE</p>
-                    <p className="text-xl font-black text-emerald-500">{welcomeData.tdee} <span className="text-xs">kcal</span></p>
+                    <p className="text-sm text-gray-400 font-black uppercase tracking-widest mb-1">TDEE</p>
+                    <p className="text-3xl font-black text-emerald-500">{welcomeData.tdee} <span className="text-base">kcal</span></p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <p className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-2">
-                    <Activity size={16} className="text-emerald-500"/> {lang === 'th' ? `รูปร่าง: ${welcomeData.status}` : `Status: ${welcomeData.status}`}
+                <div className="space-y-6">
+                  <p className="text-base md:text-lg font-black text-slate-800 dark:text-white flex items-center gap-3 bg-slate-100 dark:bg-white/5 p-4 rounded-2xl">
+                    <Activity size={20} className="text-emerald-500"/> {lang === 'th' ? `รูปร่าง: ${welcomeData.status}` : `Status: ${welcomeData.status}`}
                   </p>
                   
-                  <div className="space-y-3">
-                    <div className="flex gap-3 items-start">
-                      <Utensils size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-slate-600 dark:text-gray-400 font-medium leading-relaxed">
-                        <span className="font-bold text-slate-800 dark:text-white">
-                          {lang === 'th' ? "โภชนาการ: " : "Diet: "}
-                        </span>
+                  <div className="space-y-4">
+                    <div className="flex gap-4 items-start">
+                      <div className="p-3 bg-emerald-500/10 rounded-2xl"><Utensils size={20} className="text-emerald-500" /></div>
+                      <p className="text-sm md:text-base text-slate-600 dark:text-gray-400 font-medium leading-relaxed pt-1">
+                        <span className="font-bold text-slate-800 dark:text-white block mb-1">{lang === 'th' ? "โภชนาการ: " : "Diet: "}</span>
                         {welcomeData.dietRec}
                       </p>
                     </div>
-                    <div className="flex gap-3 items-start">
-                      <Dumbbell size={16} className="text-emerald-500 shrink-0 mt-0.5" />
-                      <p className="text-xs text-slate-600 dark:text-gray-400 font-medium leading-relaxed">
-                        <span className="font-bold text-slate-800 dark:text-white">
-                          {lang === 'th' ? "การออกกำลังกาย: " : "Workout: "}
-                        </span>
+                    <div className="flex gap-4 items-start">
+                      <div className="p-3 bg-emerald-500/10 rounded-2xl"><Dumbbell size={20} className="text-emerald-500" /></div>
+                      <p className="text-sm md:text-base text-slate-600 dark:text-gray-400 font-medium leading-relaxed pt-1">
+                        <span className="font-bold text-slate-800 dark:text-white block mb-1">{lang === 'th' ? "การออกกำลังกาย: " : "Workout: "}</span>
                         {welcomeData.workRec}
                       </p>
                     </div>
@@ -475,50 +479,47 @@ export default function HomePage() {
                 </div>
 
                 <button 
-                  onClick={() => {
-                    setShowWelcomeAuth(false);
-                    handleSaveGoal(welcomeData.sg); 
-                  }}
-                  className="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-black font-black py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl uppercase tracking-widest text-sm mt-4"
+                  onClick={() => { setShowWelcomeAuth(false); handleSaveGoal(welcomeData.sg); }}
+                  className="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-gray-200 text-white dark:text-black font-black py-5 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-2xl uppercase tracking-widest text-base mt-6"
                 >
-                  <Target size={20} />
-                  {lang === 'th' ? "ยอมรับและตั้งเป้าหมายเลย 🎯" : "Set Goal Now 🎯"}
+                  <Target size={24} /> {lang === 'th' ? "ยอมรับและตั้งเป้าหมายเลย 🎯" : "Set Goal Now 🎯"}
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        {/* 🚨 BMI RECOMMENDATION POPUP (กรณีเข้าเว็บปกติแต่ยังไม่มี Goal) */}
+        {/* 🚨 BMI RECOMMENDATION POPUP */}
         {showBmiPopup && bmiRec && !showWelcomeAuth && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-xl animate-in fade-in duration-300" />
-            <div className="relative w-full max-w-md bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
-              <div className="bg-slate-50 dark:bg-white/5 p-8 text-center relative border-b border-slate-200 dark:border-white/5">
-                <button onClick={() => setShowBmiPopup(false)} className="absolute top-6 right-6 text-gray-400 hover:text-rose-500 transition-colors"><X size={24} /></button>
-                <div className="text-6xl mb-4 drop-shadow-lg animate-bounce">{bmiRec.icon}</div>
-                <h3 className="text-2xl font-black italic uppercase text-slate-800 dark:text-white leading-none">
+            <div className="relative w-full max-w-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-500 flex flex-col">
+              <div className="bg-slate-50 dark:bg-white/5 p-10 text-center relative border-b border-slate-200 dark:border-white/5">
+                <button onClick={() => setShowBmiPopup(false)} className="absolute top-6 right-6 text-gray-400 hover:text-rose-500 transition-colors"><X size={28} /></button>
+                <div className="text-7xl mb-6 drop-shadow-lg animate-bounce">{bmiRec.icon}</div>
+                <h3 className="text-3xl font-black italic uppercase text-slate-800 dark:text-white leading-none">
                   {lang === 'th' ? "คุณยังไม่มีเป้าหมาย!" : "No Goal Set!"}
                 </h3>
               </div>
-              <div className="p-8 space-y-6 text-center">
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">{lang === 'th' ? "ผลวิเคราะห์ BMI ของคุณ" : "Your BMI Status"}</p>
-                  <p className={`text-2xl font-black uppercase ${bmiRec.color}`}>{bmiRec.status}</p>
+              <div className="p-10 space-y-8 text-center">
+                <div className="space-y-3">
+                  <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">{lang === 'th' ? "ผลวิเคราะห์ BMI ของคุณ" : "Your BMI Status"}</p>
+                  <p className={`text-3xl font-black uppercase ${bmiRec.color}`}>{bmiRec.status}</p>
                 </div>
-                <div className="p-4 bg-slate-50 dark:bg-white/5 rounded-2xl border border-slate-200 dark:border-white/10">
-                  <p className="text-sm text-slate-700 dark:text-gray-300 font-medium leading-relaxed italic">"{bmiRec.advice}"</p>
+                <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10">
+                  <p className="text-base text-slate-700 dark:text-gray-300 font-medium leading-relaxed italic">"{bmiRec.advice}"</p>
                 </div>
-                <button 
-                  onClick={() => handleSaveGoal(bmiRec.suggestedGoal)}
-                  className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 uppercase tracking-widest text-sm"
-                >
-                  <Target size={20} />
-                  {lang === 'th' ? "ตั้งเป้าหมายตามนี้เลย" : "Accept Recommendation"}
-                </button>
-                <button onClick={() => setShowBmiPopup(false)} className="text-xs font-bold text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors underline underline-offset-4">
-                  {lang === 'th' ? "ไว้ทีหลัง ขอตั้งค่าเอง" : "Maybe later, I'll set it myself"}
-                </button>
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => handleSaveGoal(bmiRec.suggestedGoal)}
+                    className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-5 rounded-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/20 uppercase tracking-widest text-base"
+                  >
+                    <Target size={24} /> {lang === 'th' ? "ตั้งเป้าหมายตามนี้เลย" : "Accept Recommendation"}
+                  </button>
+                  <button onClick={() => setShowBmiPopup(false)} className="text-sm font-bold text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors underline underline-offset-4">
+                    {lang === 'th' ? "ไว้ทีหลัง ขอตั้งค่าเอง" : "Maybe later, I'll set it myself"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -528,39 +529,39 @@ export default function HomePage() {
         {showTipModal && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-xl animate-in fade-in duration-300" onClick={() => setShowTipModal(false)} />
-            <div className="relative w-full max-w-md bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
+            <div className="relative w-full max-w-lg bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 flex flex-col">
               {modalView === 'loading' ? (
-                <div className="p-16 flex flex-col items-center justify-center space-y-6">
-                  <RefreshCw className="animate-spin text-emerald-500" size={56} />
-                  <p className="text-sm font-black text-gray-500 uppercase tracking-widest">{lang === 'th' ? "AI กำลังวิเคราะห์ข้อมูล..." : "AI Analyzing..."}</p>
+                <div className="p-20 flex flex-col items-center justify-center space-y-8">
+                  <RefreshCw className="animate-spin text-emerald-500" size={64} />
+                  <p className="text-base font-black text-gray-500 uppercase tracking-widest">{lang === 'th' ? "AI กำลังวิเคราะห์ข้อมูล..." : "AI Analyzing..."}</p>
                 </div>
               ) : (
                 <>
-                  <div className="bg-emerald-500 p-8 text-center relative">
-                    <button onClick={() => setShowTipModal(false)} className="absolute top-6 right-6 text-black/40 hover:text-black transition-colors"><X size={24} /></button>
-                    <div className="text-6xl mb-4 drop-shadow-lg">{modalView === 'select' ? '🎯' : activeTip.icon}</div>
-                    <h3 className="text-2xl font-black italic uppercase text-black leading-none">{modalView === 'select' ? (lang === 'th' ? "ตั้งค่าเป้าหมาย" : "Setting Goals") : (lang === 'th' ? "คำแนะนำจาก AI" : "AI Smart Advice")}</h3>
+                  <div className="bg-emerald-500 p-10 text-center relative">
+                    <button onClick={() => setShowTipModal(false)} className="absolute top-6 right-6 text-black/40 hover:text-black transition-colors"><X size={28} /></button>
+                    <div className="text-7xl mb-6 drop-shadow-lg">{modalView === 'select' ? '🎯' : activeTip.icon}</div>
+                    <h3 className="text-3xl font-black italic uppercase text-black leading-none">{modalView === 'select' ? (lang === 'th' ? "ตั้งค่าเป้าหมาย" : "Setting Goals") : (lang === 'th' ? "คำแนะนำจาก AI" : "AI Smart Advice")}</h3>
                   </div>
 
-                  <div className="p-8 space-y-6">
+                  <div className="p-8 md:p-10 space-y-8">
                     {modalView === 'select' ? (
-                      <div className="flex flex-col gap-4">
-                        <div className="grid gap-3">
+                      <div className="flex flex-col gap-6">
+                        <div className="grid gap-4">
                           <GoalOption active={selectedGoal === 'weight_loss'} onClick={() => setSelectedGoal('weight_loss')} title={lang === 'th' ? "ลดน้ำหนัก" : "Loss Weight"} desc={lang === 'th' ? "เน้นคุมแคลอรี่และเบิร์นไขมัน" : "Focus on calorie deficit"} />
                           <GoalOption active={selectedGoal === 'health_maintenance'} onClick={() => setSelectedGoal('health_maintenance')} title={lang === 'th' ? "คุมน้ำหนัก / Normal" : "Normal / Maintain"} desc={lang === 'th' ? "เน้นความสมดุลและรักษาสุขภาพ" : "Focus on balance & health"} />
                           <GoalOption active={selectedGoal === 'muscle_gain'} onClick={() => setSelectedGoal('muscle_gain')} title={lang === 'th' ? "เพิ่มน้ำหนัก / สร้างกล้าม" : "Gain Weight / Muscle"} desc={lang === 'th' ? "เน้นโปรตีนและเพิ่มพลังงาน" : "Focus on protein surplus"} />
                         </div>
-                        <button onClick={() => handleSaveGoal()} disabled={!selectedGoal} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-4 rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 uppercase tracking-widest text-sm mt-2">
-                          <Save size={20} /> {lang === 'th' ? "บันทึกและวิเคราะห์" : "Save & Analyze"}
+                        <button onClick={() => handleSaveGoal()} disabled={!selectedGoal} className="w-full bg-emerald-500 hover:bg-emerald-400 text-black font-black py-5 rounded-2xl transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-emerald-500/20 uppercase tracking-widest text-base mt-4">
+                          <Save size={24} /> {lang === 'th' ? "บันทึกและวิเคราะห์" : "Save & Analyze"}
                         </button>
                       </div>
                     ) : (
-                      <div className="space-y-6">
-                        <TipItem icon={<Utensils size={24}/>} title={lang === 'th' ? "โภชนาการ (Diet)" : "Nutrition Guide"} desc={activeTip.diet} />
-                        <TipItem icon={<Dumbbell size={24}/>} title={lang === 'th' ? "การออกกำลังกาย (Workout)" : "Workout Plan"} desc={activeTip.workout} />
-                        <TipItem icon={<Timer size={24}/>} title={lang === 'th' ? "คาร์ดิโอ (Cardio)" : "Cardio Focus"} desc={activeTip.cardio} />
-                        <button onClick={() => { setModalView('select'); setSelectedGoal(null); }} className="w-full pt-4 border-t border-slate-100 dark:border-white/5 text-xs font-black uppercase text-gray-400 hover:text-emerald-500 transition-colors flex items-center justify-center gap-2">
-                           <RefreshCw size={14} /> {lang === 'th' ? "เปลี่ยนเป้าหมายใหม่" : "Choose New Goal"}
+                      <div className="space-y-8">
+                        <TipItem icon={<Utensils size={28}/>} title={lang === 'th' ? "โภชนาการ (Diet)" : "Nutrition Guide"} desc={activeTip.diet} />
+                        <TipItem icon={<Dumbbell size={28}/>} title={lang === 'th' ? "การออกกำลังกาย (Workout)" : "Workout Plan"} desc={activeTip.workout} />
+                        <TipItem icon={<Timer size={28}/>} title={lang === 'th' ? "คาร์ดิโอ (Cardio)" : "Cardio Focus"} desc={activeTip.cardio} />
+                        <button onClick={() => { setModalView('select'); setSelectedGoal(null); }} className="w-full pt-6 border-t border-slate-100 dark:border-white/5 text-sm font-black uppercase text-gray-400 hover:text-emerald-500 transition-colors flex items-center justify-center gap-2">
+                           <RefreshCw size={16} /> {lang === 'th' ? "เปลี่ยนเป้าหมายใหม่" : "Choose New Goal"}
                         </button>
                       </div>
                     )}
@@ -575,15 +576,17 @@ export default function HomePage() {
   );
 }
 
+// ---------------- UI COMPONENTS ----------------
+
 function GoalOption({ onClick, active, title, desc }: any) {
   return (
-    <button onClick={onClick} className={`w-full p-4 border rounded-2xl text-left flex items-center justify-between group transition-all ${active ? 'bg-emerald-500/10 border-emerald-500 shadow-md' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-emerald-500/50'}`}>
+    <button onClick={onClick} className={`w-full p-5 border rounded-3xl text-left flex items-center justify-between group transition-all duration-300 ${active ? 'bg-emerald-500/10 border-emerald-500 shadow-md scale-[1.02]' : 'bg-slate-50 dark:bg-white/5 border-slate-200 dark:border-white/10 hover:border-emerald-500/50 hover:bg-white dark:hover:bg-white/10'}`}>
       <div>
-        <p className={`font-black italic uppercase text-base ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-white'}`}>{title}</p>
-        <p className={`text-xs font-bold uppercase tracking-tight mt-0.5 ${active ? 'text-emerald-600/70 dark:text-emerald-400/70' : 'text-gray-500'}`}>{desc}</p>
+        <p className={`font-black italic uppercase text-lg mb-1 ${active ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-800 dark:text-white'}`}>{title}</p>
+        <p className={`text-sm font-bold uppercase tracking-tight ${active ? 'text-emerald-600/70 dark:text-emerald-400/70' : 'text-gray-500'}`}>{desc}</p>
       </div>
-      <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all ${active ? 'border-emerald-500' : 'border-gray-300'}`}>
-        {active && <div className="h-2.5 w-2.5 rounded-full bg-emerald-500" />}
+      <div className={`h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all ${active ? 'border-emerald-500 bg-emerald-500/20' : 'border-gray-300'}`}>
+        {active && <div className="h-3 w-3 rounded-full bg-emerald-500 animate-in zoom-in" />}
       </div>
     </button>
   );
@@ -591,37 +594,66 @@ function GoalOption({ onClick, active, title, desc }: any) {
 
 function TipItem({ icon, title, desc }: any) {
   return (
-    <div className="flex gap-4 group">
-      <div className="h-14 w-14 rounded-2xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 group-hover:scale-110 transition-transform">{icon}</div>
-      <div className="space-y-1">
-        <h5 className="text-base font-black uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-500">{title}</h5>
-        <p className="text-[12px] text-slate-600 dark:text-gray-400 font-medium leading-relaxed italic">{desc}</p>
+    <div className="flex gap-5 group">
+      <div className="h-16 w-16 rounded-[2rem] bg-emerald-500/10 text-emerald-500 flex items-center justify-center shrink-0 border border-emerald-500/20 group-hover:scale-110 group-hover:bg-emerald-500 group-hover:text-black transition-all duration-500 shadow-sm">{icon}</div>
+      <div className="space-y-2 pt-1">
+        <h5 className="text-sm font-black uppercase tracking-[0.15em] text-emerald-600 dark:text-emerald-500">{title}</h5>
+        <p className="text-sm text-slate-600 dark:text-gray-400 font-medium leading-relaxed italic">{desc}</p>
       </div>
     </div>
   );
 }
 
+// ✅ อัปเกรด MacroCard ให้มี Progress Bar สวยๆ ด้านใน
 function MacroCard({ label, val, goal, color, border, text, icon }: any) {
+    const percentage = Math.min((val / (goal || 1)) * 100, 100);
     return (
-      <div className={`${color} border ${border} p-5 rounded-[2.5rem] flex flex-col items-center shadow-sm hover:scale-105 transition-transform`}>
-        <div className={`mb-3 ${text} opacity-60`}>{icon}</div>
-        <p className="text-[12px] font-black uppercase tracking-[0.2em] text-gray-400 mb-1">{label}</p>
-        <p className={`text-2xl font-black tracking-tighter italic ${text}`}>{Math.round(val || 0)}<span className="text-xs opacity-40 ml-0.5">g</span></p>
-        <div className="w-8 h-[1px] bg-slate-200 dark:bg-white/10 my-2"></div>
-        <p className="text-[12px] font-bold text-gray-400 uppercase tracking-tighter">Goal: {goal}g</p>
+      <div className={`${color} border ${border} p-6 lg:p-8 rounded-[2rem] lg:rounded-[3rem] flex flex-col justify-center shadow-sm hover:shadow-lg hover:-translate-y-1 transition-all duration-300 relative overflow-hidden group h-full`}>
+        <div className="flex justify-between items-center mb-5 relative z-10">
+          <div className="flex items-center gap-4 lg:gap-5">
+            <div className={`w-14 h-14 flex items-center justify-center rounded-2xl bg-white/50 dark:bg-black/20 ${text} opacity-90 shadow-inner group-hover:scale-110 transition-transform duration-500`}>
+              {icon}
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-gray-500 mb-1">{label}</p>
+              <p className={`text-3xl font-black tracking-tighter italic ${text} leading-none`}>
+                {Math.round(val || 0)}<span className="text-sm opacity-50 ml-1">g</span>
+              </p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Goal</p>
+            <p className="text-sm font-black text-gray-500">{goal}g</p>
+          </div>
+        </div>
+        {/* Progress Bar inside the card */}
+        <div className={`w-full h-2 bg-black/10 dark:bg-white/10 rounded-full overflow-hidden relative z-10 ${text}`}>
+          <div className="h-full bg-current transition-all duration-1000 ease-out" style={{ width: `${percentage}%` }} />
+        </div>
       </div>
     );
 }
 
 function FeatureLink({ href, title, desc, icon, color }: any) {
-  const colors: any = { emerald: "text-emerald-500 bg-emerald-500/10", sky: "text-sky-500 bg-sky-500/10", violet: "text-violet-500 bg-violet-500/10" };
+  const colors: any = { 
+    emerald: "text-emerald-500 bg-emerald-500/10 group-hover:bg-emerald-500 group-hover:text-black border-emerald-500/20", 
+    sky: "text-sky-500 bg-sky-500/10 group-hover:bg-sky-500 group-hover:text-black border-sky-500/20", 
+    violet: "text-violet-500 bg-violet-500/10 group-hover:bg-violet-500 group-hover:text-black border-violet-500/20" 
+  };
   return (
-    <Link href={href} className="flex items-center justify-between p-5 bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 rounded-[2.5rem] hover:bg-slate-50 dark:hover:bg-white/5 transition-all group shadow-sm active:scale-[0.98]">
-      <div className="flex items-center gap-4">
-        <div className={`h-16 w-16 rounded-2xl flex items-center justify-center ${colors[color]} transition-transform group-hover:rotate-6 shadow-sm`}>{icon}</div>
-        <div><h5 className="text-base font-black text-slate-800 dark:text-white leading-none mb-1.5 uppercase italic">{title}</h5><p className="text-base text-gray-400 font-bold uppercase tracking-widest">{desc}</p></div>
+    <Link href={href} className={`flex items-center justify-between p-6 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/5 rounded-[2.5rem] hover:bg-white dark:hover:bg-white/10 transition-all group shadow-sm hover:shadow-xl active:scale-[0.98]`}>
+      <div className="flex items-center gap-5 lg:gap-6">
+        <div className={`h-16 w-16 rounded-[2rem] flex items-center justify-center transition-all duration-500 group-hover:rotate-6 group-hover:scale-110 shadow-sm border ${colors[color]}`}>
+          {icon}
+        </div>
+        <div>
+          <h5 className="text-xl font-black text-slate-800 dark:text-white leading-none mb-2 uppercase italic">{title}</h5>
+          <p className="text-xs text-gray-400 font-bold uppercase tracking-widest">{desc}</p>
+        </div>
       </div>
-      <ChevronRight size={20} className="text-gray-300 group-hover:text-emerald-500 group-hover:translate-x-1 transition-all" />
+      <div className="h-12 w-12 rounded-full bg-white dark:bg-black/50 border border-slate-200 dark:border-white/10 flex items-center justify-center group-hover:bg-slate-900 group-hover:dark:bg-white group-hover:text-white group-hover:dark:text-black transition-all">
+        <ChevronRight size={24} className="group-hover:translate-x-1 transition-transform" />
+      </div>
     </Link>
   );
 }
