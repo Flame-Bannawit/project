@@ -75,7 +75,7 @@ export default function ProfilePage() {
     return age;
   };
 
-  // ✅ Client-side Preview Calculation (เพื่อให้ UI ตอบสนองทันทีที่เปลี่ยน Goal/น้ำหนัก)
+  // ✅ Client-side Preview Calculation
   const previewStats = useMemo(() => {
     if (!profile) return null;
     const age = Number(calculateAge(profile.birthDate)) || 25;
@@ -109,6 +109,16 @@ export default function ProfilePage() {
 
   const handleSave = async () => {
     if (!profile) return;
+    
+    // 🛡️ ป้องกันการเซฟถ้าชื่อว่าง
+    if (!profile.name.trim()) {
+      setMsg({ 
+        text: lang === 'th' ? "กรุณากรอกชื่อของคุณด้วยครับ ⚠️" : "Please enter your name ⚠️", 
+        type: "error" 
+      });
+      return;
+    }
+
     setSaving(true);
     setMsg(null);
     try {
@@ -185,11 +195,13 @@ export default function ProfilePage() {
         <header className="flex flex-col md:flex-row md:items-center justify-between gap-6 border-b border-slate-200 dark:border-white/5 pb-8">
           <div className="flex flex-col md:flex-row md:items-center gap-6">
             <div className="h-20 w-20 rounded-[2.2rem] bg-emerald-500 flex items-center justify-center text-black text-3xl font-black shadow-lg shadow-emerald-500/20 shrink-0">
-              {profile.name?.[0].toUpperCase()}
+              {/* 🎯 แก้ไขตรงนี้: ถ้าชื่อว่าง ให้แสดงตัวย่อ 'U' (User) ไปก่อน */}
+              {profile.name ? profile.name[0].toUpperCase() : 'U'}
             </div>
             <div className="space-y-3">
               <h1 className="text-4xl font-black uppercase tracking-tighter italic leading-none text-slate-900 dark:text-white">
-                {profile.name}
+                {/* 🎯 แก้ไขตรงนี้: ถ้าชื่อว่าง ให้แสดงคำว่า User แทน เพื่อไม่ให้ UI แหว่ง */}
+                {profile.name || (lang === 'th' ? "ผู้ใช้งาน" : "User")}
               </h1>
               <p className="text-gray-500 text-xs font-black uppercase tracking-[0.2em] leading-none opacity-60">
                 {profile.email}
@@ -221,7 +233,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* ✅ แถบเลือกเป้าหมาย (Goal) ใหม่ */}
               <div className="p-6 bg-slate-50 dark:bg-white/5 rounded-3xl border border-slate-200 dark:border-white/10 space-y-4 relative z-10">
                 <div className="flex items-center gap-2 mb-2">
                   <Target size={16} className="text-emerald-500" />

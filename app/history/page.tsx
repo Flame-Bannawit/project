@@ -20,7 +20,7 @@ type MealLog = {
   carbs?: number;
   fat?: number;
   remainingPercent?: number;
-  isSaved?: boolean; // 🆕 เพิ่มสถานะการบันทึก
+  isSaved?: boolean;
   thaiDish?: {
     originalCalories?: number;
     originalProtein?: number;
@@ -125,8 +125,10 @@ export default function HistoryPage() {
   const todaysLogs = logs.filter(log => getCustomDateStr(log.loggedAt || log.createdAt) === todayStr);
   const pastLogs = logs.filter(log => getCustomDateStr(log.loggedAt || log.createdAt) !== todayStr);
 
-  // ✅ รวมค่าเฉพาะมื้อที่ isSaved เป็น true เท่านั้น
-  const stats = todaysLogs
+  // 🎯 อัปเดต: ถ้ามีการเลือกวันที่ (filterDate) ให้เอาข้อมูลของวันนั้นมาคำนวณ ถ้าไม่ได้เลือกให้เป็นของวันนี้
+  const activeLogsForStats = filterDate ? filteredLogs : todaysLogs;
+
+  const stats = activeLogsForStats
     .filter(log => log.isSaved === true) 
     .reduce((acc, log) => ({
       cal: acc.cal + (log.calories || 0), 
@@ -143,7 +145,6 @@ export default function HistoryPage() {
     if (res.ok) setLogs(prev => prev.filter(l => l._id !== id));
   };
 
-  // 🆕 ฟังก์ชันกดบันทึกจากหน้า History (เปลี่ยน isSaved เป็น true)
   const handleSaveToLog = async (id: string) => {
     setIsUpdating(true);
     try {
@@ -204,13 +205,18 @@ export default function HistoryPage() {
     </div>
   );
 
+  // เตรียมข้อความวันที่สำหรับแสดงผล
+  const displayDateText = filterDate 
+    ? (lang === 'th' ? `ข้อมูลวันที่ ${new Date(filterDate).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' })}` : `Insights for ${new Date(filterDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`)
+    : (lang === 'th' ? "ข้อมูลวันนี้" : "Today's Insights");
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 pb-24 px-4 pt-6 animate-in fade-in duration-700">
       <header className="flex justify-between items-center mb-4 px-2 text-slate-900 dark:text-white">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tighter italic leading-none">History</h1>
           <p className="text-xs text-emerald-500 font-bold uppercase tracking-widest mt-2 flex items-center gap-1">
-             <Zap size={10} fill="currentColor" /> {lang === 'th' ? "ข้อมูลวันนี้" : "Today's Insights"}
+             <Zap size={10} fill="currentColor" /> {displayDateText}
           </p>
         </div>
         <div className="h-10 w-10 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-400">
@@ -239,11 +245,21 @@ export default function HistoryPage() {
       </section>
 
       <div className="px-2">
-        <div className="relative">
-          <input type="date" value={filterDate} onChange={(e) => {setFilterDate(e.target.value); setShowAll(true);}} className="w-full bg-slate-100 dark:bg-white/5 border-none rounded-2xl p-3 pl-10 text-base font-black uppercase tracking-widest text-slate-600 dark:text-gray-400 outline-none focus:ring-2 ring-emerald-500/20" />
-          <Calendar className="absolute left-3 top-3 text-gray-400" size={14} />
+        <div className="relative flex items-center bg-slate-100 dark:bg-white/5 rounded-2xl border border-transparent focus-within:border-emerald-500/30 focus-within:ring-2 focus-within:ring-emerald-500/20 transition-all">
+          <Calendar className="absolute left-4 text-gray-400 pointer-events-none" size={16} />
+          <input 
+            type="date" 
+            value={filterDate} 
+            onChange={(e) => {setFilterDate(e.target.value); setShowAll(true);}} 
+            className="w-full bg-transparent border-none p-4 pl-12 pr-12 text-sm font-black uppercase tracking-widest text-slate-700 dark:text-gray-300 outline-none cursor-pointer appearance-none" 
+          />
           {filterDate && (
-            <button onClick={() => setFilterDate("")} className="absolute right-3 top-2.5 p-1 bg-white dark:bg-white/10 rounded-lg text-gray-400"><X size={14}/></button>
+            <button 
+              onClick={() => setFilterDate("")} 
+              className="absolute right-3 p-1.5 bg-white dark:bg-white/10 rounded-xl text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors z-10"
+            >
+              <X size={14} />
+            </button>
           )}
         </div>
       </div>
@@ -269,7 +285,6 @@ export default function HistoryPage() {
         )}
       </div>
 
-      {/* Edit Portion Modal (คงเดิม) */}
       {editingLog && (() => {
         const base = {
           cal: Number(editingLog.thaiDish?.originalCalories || editingLog.calories || editingLog.totalCalories || 0),
@@ -345,12 +360,10 @@ export default function HistoryPage() {
   );
 }
 
-// 🆕 เพิ่มปุ่มบันทึกในการ์ด (เฉพาะมื้อที่ isSaved === false)
 function MealCard({ log, isToday, onDelete, onEdit, onSave, lang, isUpdating }: any) {
   const logDate = new Date(log.loggedAt || log.createdAt || "");
   const isEdited = (log.remainingPercent || 0) > 0;
   
-  // ถ้าไม่ได้บันทึก ให้การ์ดดูโปร่งใสขึ้นนิดนึง
   const isPending = log.isSaved === false; 
 
   return (
@@ -381,14 +394,12 @@ function MealCard({ log, isToday, onDelete, onEdit, onSave, lang, isUpdating }: 
           </div>
         </div>
         
-        {/* เมนูลบ/แก้ไข */}
         <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
           <button onClick={onEdit} className="p-2 text-emerald-500 hover:bg-emerald-500/10 rounded-xl transition-all"><Edit2 size={14} /></button>
           <button onClick={() => onDelete(log._id)} className="p-2 text-red-400 hover:bg-red-500/10 rounded-xl transition-all"><Trash2 size={14} /></button>
         </div>
       </div>
 
-      {/* 🆕 ปุ่มกดบันทึก โผล่มาเฉพาะถ้า isSaved เป็น false */}
       {isPending && (
         <button 
           onClick={onSave}
