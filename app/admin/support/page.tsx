@@ -117,9 +117,9 @@ export default function SupportPage() {
                      </div>
                      <div>
                         <p className="text-sm font-black italic text-slate-900 dark:text-white">
-                          {report.userName || report.name || report.userEmail?.split('@')[0] || (lang === 'th' ? "ไม่ระบุชื่อ" : "Anonymous")}
+                          {report.userId?.name || (lang == 'th' ? "ไม่ระบุขื่่อ" : "Anonymous")}
                         </p>
-                        <p className="text-xs text-gray-500 font-bold lowercase truncate max-w-[120px]">{report.userEmail || "no-email"}</p>
+                        <p className="text-xs text-gray-500 font-bold lowercase truncate max-w-[120px]">{report.userId?.email || "no-email"}</p>
                      </div>
                   </div>
                   <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[12px] font-black uppercase tracking-widest border ${
@@ -148,12 +148,6 @@ export default function SupportPage() {
                            <CheckCircle2 size={14} /> {lang === 'th' ? "ทำเครื่องหมายว่าแก้แล้ว" : "Mark as Resolved"}
                          </button>
                       )}
-                      <a 
-                        href={`mailto:${report.userEmail}`}
-                        className="flex items-center gap-2 px-6 py-2.5 bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-gray-400 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm"
-                      >
-                        <Mail size={14} /> {lang === 'th' ? "ติดต่อผู้ใช้" : "Contact User"}
-                      </a>
                    </div>
                 </div>
               </div>

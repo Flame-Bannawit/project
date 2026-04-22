@@ -36,6 +36,8 @@ export async function GET() {
           role: 1,
           heightCm: 1,
           weightKg: 1,
+          birthDate: 1,
+          goal: 1,
           createdAt: 1,
           // 🔢 นับจำนวนมื้ออาหารใส่ในตัวแปร totalMealLogs
           totalMealLogs: { $size: "$meals" }

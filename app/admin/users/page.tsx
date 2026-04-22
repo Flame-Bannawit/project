@@ -4,10 +4,33 @@ import { useEffect, useState, useCallback } from "react";
 import { 
   Users, Search, ChevronLeft, MoreVertical, 
   Trash2, UserCog, Utensils, Info, X, 
-  ShieldAlert, Lock, Save, ArrowRight, Loader2, Clock, KeyRound, RefreshCw
+  ShieldAlert, Lock, Save, ArrowRight, Loader2, Clock, KeyRound, RefreshCw, Calendar
 } from "lucide-react";
 import Link from "next/link";
 import { getDictionary } from "@/lib/get-dictionary";
+
+// ฟังก์ชันคำนวณอายุ
+const calculateAge = (birthdateStr: string) => {
+  if (!birthdateStr) return null;
+  const birthDate = new Date(birthdateStr);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// ฟังก์ชันจัดกลุ่มวัย
+const getAgeGroup = (age: number | null, lang: string) => {
+  if (age === null) return lang === 'th' ? "ไม่ระบุ" : "Not specified";
+  if (age >= 10 && age <= 15) return lang === 'th' ? "วัยเด็ก (10-15)" : "Child (10-15)";
+  if (age >= 16 && age <= 24) return lang === 'th' ? "วัยรุ่น (16-24)" : "Teen (16-24)";
+  if (age >= 25 && age <= 60) return lang === 'th' ? "วัยทำงาน (25-60)" : "Adult (25-60)";
+  if (age > 60) return lang === 'th' ? "ผู้สูงอายุ (60+)" : "Senior (60+)";
+  return lang === 'th' ? "อื่นๆ" : "Other";
+};
 
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<any[]>([]);
@@ -26,7 +49,16 @@ export default function AdminUsersPage() {
 
   const [userMeals, setUserMeals] = useState<any[]>([]);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [editMetrics, setEditMetrics] = useState({ heightCm: 0, weightKg: 0 });
+  
+  // ขยาย State ให้ครอบคลุมข้อมูลทั้งหมด
+  const [editMetrics, setEditMetrics] = useState({ 
+    name: "",
+    email: "",
+    heightCm: 0, 
+    weightKg: 0,
+    birthdate: "",
+    goal: ""
+  });
 
   const fetchUsers = useCallback(async () => {
     setLoading(true);
@@ -44,12 +76,31 @@ export default function AdminUsersPage() {
     fetchUsers(); 
   }, [fetchUsers]);
 
-  // ดึงประวัติอาหารเมื่อเลือก User
+// ดึงประวัติอาหารและ Set ค่าเริ่มต้นเมื่อเลือก User
   useEffect(() => {
     if (selectedUser) {
+      // 🛠️ แก้ไขส่วนการแปลงวันที่ให้รองรับ Input Date
+      let formattedDate = "";
+      if (selectedUser.birthDate) {
+        try {
+          const dateObj = new Date(selectedUser.birthDate);
+          // เช็คว่า Date Valid หรือไม่
+          if (!isNaN(dateObj.getTime())) {
+            // ดึงเฉพาะ YYYY-MM-DD
+            formattedDate = dateObj.toISOString().split('T')[0];
+          }
+        } catch(e) {
+          console.error("Date conversion error:", e);
+        }
+      }
+
       setEditMetrics({ 
+        name: selectedUser.name || "",
+        email: selectedUser.email || "",
         heightCm: selectedUser.heightCm || 0, 
-        weightKg: selectedUser.weightKg || 0 
+        weightKg: selectedUser.weightKg || 0,
+        birthdate: formattedDate, // ตอนนี้จะเป็น YYYY-MM-DD แล้ว
+        goal: selectedUser.goal || ""
       });
       
       const fetchUserMeals = async () => {
@@ -72,13 +123,29 @@ export default function AdminUsersPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: selectedUser._id,
+          name: editMetrics.name,
+          email: editMetrics.email,
           heightCm: Number(editMetrics.heightCm),
-          weightKg: Number(editMetrics.weightKg)
+          weightKg: Number(editMetrics.weightKg),
+          birthDate: editMetrics.birthdate,
+          goal: editMetrics.goal
         }),
       });
       if (res.ok) {
-        alert(lang === 'th' ? "อัปเดตสำเร็จ! ✅" : "Updated successfully! ✅");
+        alert(lang === 'th' ? "อัปเดตข้อมูลสำเร็จ! ✅" : "Data updated successfully! ✅");
+        // อัปเดต selectedUser เพื่อให้ UI สะท้อนค่าใหม่ทันที
+        setSelectedUser({
+          ...selectedUser,
+          name: editMetrics.name,
+          email: editMetrics.email,
+          heightCm: editMetrics.heightCm,
+          weightKg: editMetrics.weightKg,
+          birthDate: editMetrics.birthdate,
+          goal: editMetrics.goal
+        });
         fetchUsers();
+      } else {
+        alert("Update failed.");
       }
     } catch (err) { console.error(err); }
     setIsUpdating(false);
@@ -180,28 +247,33 @@ export default function AdminUsersPage() {
             <tbody className="divide-y divide-slate-100 dark:divide-white/5">
               {loading ? (
                 <tr><td colSpan={4} className="py-20 text-center"><Loader2 className="animate-spin mx-auto text-emerald-500" size={32} /></td></tr>
-              ) : filteredUsers.map((user) => (
-                <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-500 font-black text-xs border border-emerald-500/20 uppercase shadow-sm">{user.name?.[0]}</div>
-                      <div>
-                        <div className="text-sm font-black italic text-slate-800 dark:text-white">{user.name}</div>
-                        <div className="text-xs text-gray-500 font-bold">{user.email}</div>
+              ) : filteredUsers.map((user) => {
+                // เช็ค Role Admin และอีเมลผู้ดูแลระบบ
+                const isAdmin = user.role === 'admin' || user.email === 'useradmin@test.com';
+
+                return (
+                  <tr key={user._id} className="hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group">
+                    <td className="px-8 py-5">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-500 font-black text-xs border border-emerald-500/20 uppercase shadow-sm">{user.name?.[0]}</div>
+                        <div>
+                          <div className="text-sm font-black italic text-slate-800 dark:text-white">{user.name}</div>
+                          <div className="text-xs text-gray-500 font-bold">{user.email}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5 text-sm font-black text-slate-600 dark:text-gray-300 italic">{user.totalMealLogs || 0} {lang === 'th' ? "มื้อที่บันทึก" : "Meals Tracked"}</td>
-                  <td className="px-8 py-5">
-                     <span className={`text-[12px] font-black px-2 py-0.5 rounded-md uppercase border ${user.role === 'admin' ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
-                      {user.role || 'Active'}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                    <button onClick={() => setSelectedUser(user)} className="p-3 bg-slate-100 dark:bg-white/5 rounded-xl text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500 hover:text-black transition-all active:scale-90 shadow-sm"><UserCog size={18} /></button>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-8 py-5 text-sm font-black text-slate-600 dark:text-gray-300 italic">{user.totalMealLogs || 0} {lang === 'th' ? "มื้อที่บันทึก" : "Meals Tracked"}</td>
+                    <td className="px-8 py-5">
+                        <span className={`text-[12px] font-black px-2 py-0.5 rounded-md uppercase border ${isAdmin ? 'bg-blue-500/10 text-blue-500 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                        {isAdmin ? 'Admin' : (user.role || 'Active')}
+                      </span>
+                    </td>
+                    <td className="px-8 py-5 text-right">
+                      <button onClick={() => setSelectedUser(user)} className="p-3 bg-slate-100 dark:bg-white/5 rounded-xl text-emerald-600 dark:text-emerald-500 hover:bg-emerald-500 hover:text-black transition-all active:scale-90 shadow-sm"><UserCog size={18} /></button>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -211,36 +283,74 @@ export default function AdminUsersPage() {
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
             <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/90 backdrop-blur-xl" onClick={() => {setSelectedUser(null); setIsPinVerified(false);}} />
             
-            <div className="relative w-full max-w-4xl bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 max-h-[90vh]">
-              {/* Left Column */}
-              <div className="md:w-1/3 bg-slate-50/50 dark:bg-black/40 p-8 border-r border-slate-100 dark:border-white/10 overflow-y-auto">
-                <div className="text-center space-y-4 mb-8">
+            <div className="relative w-full max-w-5xl bg-white dark:bg-[#0d0d0d] border border-slate-200 dark:border-white/10 rounded-[3rem] shadow-2xl overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 max-h-[90vh]">
+              {/* Left Column - User Info Editing */}
+              <div className="md:w-5/12 bg-slate-50/50 dark:bg-black/40 p-8 border-r border-slate-100 dark:border-white/10 overflow-y-auto custom-scrollbar">
+                <div className="text-center space-y-2 mb-6">
                   <div className="h-20 w-20 rounded-3xl bg-emerald-500 mx-auto flex items-center justify-center text-black text-3xl font-black uppercase shadow-lg shadow-emerald-500/20">{selectedUser.name?.[0]}</div>
                   <h2 className="text-xl font-black italic uppercase text-slate-900 dark:text-white">{selectedUser.name}</h2>
+                  
+                  {/* แสดงอายุและวัย */}
+                  <div className="flex items-center justify-center gap-2 mt-2">
+                    <span className="px-3 py-1 bg-slate-200 dark:bg-white/10 rounded-lg text-xs font-black uppercase text-slate-700 dark:text-gray-300">
+                      {lang === 'th' ? `อายุ ${calculateAge(editMetrics.birthdate) !== null ? calculateAge(editMetrics.birthdate) : '-'} ปี` : `Age ${calculateAge(editMetrics.birthdate) !== null ? calculateAge(editMetrics.birthdate) : '-'}`}
+                    </span>
+                    <span className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs font-black uppercase text-emerald-600 dark:text-emerald-500">
+                      {getAgeGroup(calculateAge(editMetrics.birthdate), lang)}
+                    </span>
+                  </div>
                 </div>
 
                 <div className="space-y-4">
+                  {/* ฟิลด์ชื่อ */}
                   <div className="space-y-1">
-                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "ส่วนสูง (ซม.)" : "Height (cm)"}</label>
-                    <input type="number" value={editMetrics.heightCm} onChange={(e) => setEditMetrics({...editMetrics, heightCm: Number(e.target.value)})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black italic text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "น้ำหนัก (กก.)" : "Weight (kg)"}</label>
-                    <input type="number" value={editMetrics.weightKg} onChange={(e) => setEditMetrics({...editMetrics, weightKg: Number(e.target.value)})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black italic text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
+                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "ชื่อผู้ใช้" : "Name"}</label>
+                    <input type="text" value={editMetrics.name} onChange={(e) => setEditMetrics({...editMetrics, name: e.target.value})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
                   </div>
                   
-                  <button onClick={handleUpdateMetrics} disabled={isUpdating} className="w-full py-3 bg-emerald-500 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
-                    {isUpdating ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} {lang === 'th' ? "บันทึกสัดส่วน" : "Update Metrics"}
-                  </button>
+                  {/* ฟิลด์อีเมล */}
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "อีเมล" : "Email"}</label>
+                    <input type="email" value={editMetrics.email} onChange={(e) => setEditMetrics({...editMetrics, email: e.target.value})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
+                  </div>
 
-                  <button onClick={() => handleDeleteUser(selectedUser._id)} className="w-full py-3 bg-red-500/10 text-red-600 dark:text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2">
-                    <Trash2 size={14} /> {lang === 'th' ? "ลบผู้ใช้งาน" : "Delete User"}
-                  </button>
+                  {/* ฟิลด์วันเกิด */}
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4 flex items-center gap-1"><Calendar size={12}/> {lang === 'th' ? "วัน/เดือน/ปีเกิด" : "Birthdate"}</label>
+                    <input type="date" value={editMetrics.birthdate} onChange={(e) => setEditMetrics({...editMetrics, birthdate: e.target.value})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500 [color-scheme:light] dark:[color-scheme:dark]" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "ส่วนสูง (ซม.)" : "Height (cm)"}</label>
+                      <input type="number" value={editMetrics.heightCm} onChange={(e) => setEditMetrics({...editMetrics, heightCm: Number(e.target.value)})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "น้ำหนัก (กก.)" : "Weight (kg)"}</label>
+                      <input type="number" value={editMetrics.weightKg} onChange={(e) => setEditMetrics({...editMetrics, weightKg: Number(e.target.value)})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
+                    </div>
+                  </div>
+
+                  {/* ฟิลด์เป้าหมาย */}
+                  <div className="space-y-1">
+                    <label className="text-[12px] font-black text-gray-500 uppercase ml-4">{lang === 'th' ? "เป้าหมาย" : "Goal"}</label>
+                    <input type="text" placeholder={lang === 'th' ? "เช่น ลดน้ำหนัก, เพิ่มกล้ามเนื้อ" : "e.g., Lose weight"} value={editMetrics.goal} onChange={(e) => setEditMetrics({...editMetrics, goal: e.target.value})} className="w-full bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-sm font-black text-slate-900 dark:text-white outline-none focus:border-emerald-500" />
+                  </div>
+                  
+                  <div className="pt-4 space-y-3">
+                    <button onClick={handleUpdateMetrics} disabled={isUpdating} className="w-full py-3 bg-emerald-500 text-black font-black text-xs uppercase tracking-widest rounded-xl hover:bg-emerald-400 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20">
+                      {isUpdating ? <Loader2 className="animate-spin" size={14} /> : <Save size={14} />} {lang === 'th' ? "บันทึกข้อมูลทั้งหมด" : "Save All Changes"}
+                    </button>
+
+                    <button onClick={() => handleDeleteUser(selectedUser._id)} className="w-full py-3 bg-red-500/10 text-red-600 dark:text-red-500 border border-red-500/20 font-black text-xs uppercase tracking-widest rounded-xl hover:bg-red-500 hover:text-white transition-all flex items-center justify-center gap-2">
+                      <Trash2 size={14} /> {lang === 'th' ? "ลบผู้ใช้งาน" : "Delete User"}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Right Column */}
-              <div className="md:w-2/3 p-8 flex flex-col bg-white dark:bg-[#0d0d0d]">
+              {/* Right Column - Activities & Security */}
+              <div className="md:w-7/12 p-8 flex flex-col bg-white dark:bg-[#0d0d0d]">
                 <div className="flex justify-between items-center mb-6">
                   <div>
                     <h3 className="font-black text-xs text-emerald-600 dark:text-emerald-500 uppercase tracking-widest italic">{lang === 'th' ? "ประวัติการทานทั้งหมด" : "Complete Meal History"}</h3>

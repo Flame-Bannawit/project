@@ -36,7 +36,7 @@ export async function GET(req: Request) {
   }
 }
 
-// 📝 [PATCH] อัปเดตข้อมูลร่างกาย
+// 📝 [PATCH] อัปเดตข้อมูลผู้ใช้งาน (ชื่อ, อีเมล, ข้อมูลร่างกาย, วันเกิด, เป้าหมาย)
 export async function PATCH(req: Request) {
   try {
     const adminUser = (await getCurrentUser()) as any;
@@ -47,7 +47,7 @@ export async function PATCH(req: Request) {
     }
 
     const body = await req.json();
-    const { userId, heightCm, weightKg } = body;
+    const { userId, name, email, heightCm, weightKg, birthDate, goal } = body;
 
     if (!userId) {
       return NextResponse.json({ error: "User ID is required" }, { status: 400 });
@@ -55,11 +55,16 @@ export async function PATCH(req: Request) {
 
     await connectDB();
 
+    // ✅ อัปเดตข้อมูลแบบครอบคลุมตามที่หน้าบ้านส่งมา
     const updatedUser = await User.findByIdAndUpdate(
       userId,
       { 
+        name: name,
+        email: email,
         heightCm: Number(heightCm), 
-        weightKg: Number(weightKg) 
+        weightKg: Number(weightKg),
+        birthDate: birthDate ? new Date(birthDate) : null, // แปลง string เป็น Date Object
+        goal: goal
       },
       { new: true } 
     );
